@@ -16,6 +16,9 @@ prometheus_listen_addr = ":26660"
 EOF
 cat > "$fixture/.worrell/config/app.toml" <<'EOF'
 minimum-gas-prices = "0stake"
+pruning = "custom"
+pruning-keep-recent = "100"
+pruning-interval = "20"
 [api]
 address = "tcp://localhost:1317"
 [grpc]
@@ -23,7 +26,7 @@ address = "localhost:9090"
 [grpc-web]
 address = "0.0.0.0:9091"
 EOF
-awk '/^read -r -p "Enter node moniker/{exit} {print}' "$repo/resources/worrelld_node_install_testnet.sh" > "$fixture/functions.sh"
+awk '/^if \[ ! -t 0 \]; then/{exit} {print}' "$repo/resources/worrelld_node_install_testnet.sh" > "$fixture/functions.sh"
 HOME="$fixture" WORRELL_HOME="$fixture/.worrell" bash -c 'source "$HOME/functions.sh"; valid_prefix 10; valid_prefix 64; ! valid_prefix 09; ! valid_prefix 65; remap_config 38'
 grep -q 'proxy_app = "tcp://127.0.0.1:38658"' "$fixture/.worrell/config/config.toml"
 grep -q 'laddr = "tcp://0.0.0.0:38656"' "$fixture/.worrell/config/config.toml"
@@ -33,5 +36,8 @@ grep -q 'address = "tcp://127.0.0.1:38317"' "$fixture/.worrell/config/app.toml"
 grep -q 'address = "localhost:38090"' "$fixture/.worrell/config/app.toml"
 grep -q 'address = "127.0.0.1:38091"' "$fixture/.worrell/config/app.toml"
 grep -q 'minimum-gas-prices = "0.025uworrell"' "$fixture/.worrell/config/app.toml"
+grep -q 'pruning = "custom"' "$fixture/.worrell/config/app.toml"
+grep -q 'pruning-keep-recent = "100"' "$fixture/.worrell/config/app.toml"
+grep -q 'pruning-interval = "20"' "$fixture/.worrell/config/app.toml"
 
 echo 'Worrel port mapping tests: PASS'
