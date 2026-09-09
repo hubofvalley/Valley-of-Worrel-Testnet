@@ -11,9 +11,12 @@ bash -n "$menu" "$installer" "$migration" "$upgrade"
 grep -q 'releases/download/cosmovisor' "$installer"
 grep -q 'SHA256SUMS-cosmovisor' "$installer"
 grep -q '3df6ef38cf976b00d226f391dc6866b8dc4040fc2f1b4a780d248f6e1cc9332e' "$installer"
-grep -q 'ExecStart=\$COSMOVISOR_BIN run start --home \$HOME_DIR$' "$installer"
+grep -q 'SERVICE_EXEC_START="\$COSMOVISOR_BIN run start --home \$HOME_DIR"' "$installer"
+grep -q 'SERVICE_EXEC_START="\$BINARY_DIR/worrelld start --home \$HOME_DIR"' "$installer"
 ! grep -q 'ExecStart=.*run start.*--chain-id' "$installer"
 ! grep -q 'ExecStart=.*run start.*--chain-id' "$migration"
+grep -q 'SERVICE_MODE=direct' "$installer"
+grep -q -- '--service-mode' "$installer"
 grep -q 'DAEMON_ALLOW_DOWNLOAD_BINARIES=false' "$installer"
 grep -q 'UNSAFE_SKIP_BACKUP=false' "$installer"
 grep -q 'data/upgrade-info.json' "$repo/docs/cosmovisor.md"
@@ -38,14 +41,19 @@ trap 'rm -rf "$fixture"' EXIT
 mkdir -p "$fixture/.worrell/cosmovisor/current/bin"
 touch "$fixture/.worrell/cosmovisor/current/bin/worrelld"
 chmod +x "$fixture/.worrell/cosmovisor/current/bin/worrelld"
-cat > "$fixture/unit" <<'EOF'
-ExecStart=/home/test/go/bin/cosmovisor run start
+cat > "$fixture/effective" <<'EOF'
+/home/test/go/bin/cosmovisor run start
 EOF
 awk '/^echo -e "\$LOGO"/{exit} {print}' "$menu" > "$fixture/functions.sh"
 HOME="$fixture" WORRELL_HOME="$fixture/.worrell" WORRELL_SERVICE_NAME=worrelld bash -c '
-  sudo() { if [ "$1" = systemctl ] && [ "$2" = cat ]; then cat "$HOME/unit"; else return 1; fi; }
+  sudo() { if [ "$1" = systemctl ] && [ "$2" = show ]; then cat "$HOME/effective"; else return 1; fi; }
   source "$HOME/functions.sh"
+  test "$(runtime_mode)" = cosmovisor
   test "$(worrell_bin)" = "$HOME/.worrell/cosmovisor/current/bin/worrelld"
+  printf "/home/test/go/bin/worrelld start --home /tmp\n" > "$HOME/effective"
+  test "$(runtime_mode)" = direct
+  printf "ambiguous\n" > "$HOME/effective"
+  test "$(runtime_mode)" = unknown
 '
 
 # SDK-valid plan names may contain spaces; emergency staging must fail closed on conflicts.

@@ -53,6 +53,28 @@ echo 'a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd  '"$WORRE
 worrelld genesis validate-genesis --home "$WORRELL_HOME"
 ```
 
+Choose one application-state retention policy before starting the service. For a normal validator, use pruned mode:
+
+```toml
+pruning = "custom"
+pruning-keep-recent = "100"
+pruning-interval = "20"
+```
+
+For an archive node, retain all application-state history:
+
+```toml
+pruning = "nothing"
+pruning-keep-recent = "0"
+pruning-interval = "0"
+```
+
+Changing from pruned to archive later cannot recreate historical states already deleted. Pruning selection is independent of direct/Cosmovisor runtime.
+
+## Apply a snapshot
+
+Use Valley option `1h` -> provider -> `Pruned`. ITRocket resolves its rotating archive through `https://server-3.itrocket.net/testnet/worrell/.current_state.json`; Sychonix publishes `https://snapshot.sychonix.com/testnet/worrell/worrell-snapshot.tar.lz4`. The guarded helper downloads and validates the archive before downtime, accepts only a top-level `data/` tree, preserves `config/` and `priv_validator_state.json`, and requires `APPLY-WORRELL-SNAPSHOT`. Archive snapshots are not enabled because no provider archive was verified.
+
 Set the official peers in `config.toml`:
 
 ```toml
@@ -72,7 +94,7 @@ worrelld start --home "$WORRELL_HOME"
 worrelld status --home "$WORRELL_HOME" 2>&1 | jq '.sync_info'
 ```
 
-Create a validator only when `catching_up` is `false`. The official runbook states that state sync is enabled on the network, but no separate snapshot artifact is verified here.
+Create a validator only when `catching_up` is `false`. The Valley menu provides guarded pruned snapshot application; verify provider metadata and the destructive confirmation before use.
 
 ## Key and validator
 

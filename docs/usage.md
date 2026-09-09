@@ -16,13 +16,14 @@ Run as the node OS user. Do not use `sudo bash`; the scripts request sudo only f
 
 | Option | Behaviour | Risk |
 |---|---|---|
-| `1a` | Deploys or redeploys the node through the audited installer. Backs up an existing `~/.worrell` before replacement. | High: replaces node data after confirmation. |
+| `1a` | Deploys or redeploys the node through the audited installer, then asks whether to use pruned or archive storage, and whether to run the service directly with `worrelld` or through pinned Cosmovisor. Backs up an existing `~/.worrell` before replacement. | High: replaces node data after confirmation. |
 | `1b` | Updates the pinned `worrelld` release after checksum verification when the node is using the direct systemd binary. Cosmovisor-managed nodes are routed to `1g`. | Medium: service restart/downtime. |
 | `1c` | Shows local and public heights, chain ID, catching-up state, and block difference. | Read-only. |
 | `1d` | Follows the selected service journal. | Read-only. |
 | `1e` | Sets manual persistent peers or restores the two peers from official network metadata. | Medium: changes config. |
 | `1f` | Queries an operator key balance. | Read-only. |
 | `1g` | Manages Cosmovisor: migrates an existing node, shows status, or stages a verified upgrade binary. | Medium/high: service unit changes or upgrade preparation. |
+| `1h` | Applies a verified pruned snapshot from ITRocket or Sychonix after archive validation and explicit confirmation. Preserves config and validator state. | High: replaces node data after confirmation. |
 
 ### 2. Validator / Key Interactions
 
@@ -62,16 +63,36 @@ Leaves the menu. If the installer saved variables, run `source ~/.bash_profile` 
 1. Review the installer and release checksum source.
 2. Run `1a` as a dedicated node OS user.
 3. Choose a two-digit port prefix from `10` through `64` if the default ports are occupied. Prefix `26` keeps consensus ports at 26656/26657/26658; API/gRPC/Prometheus are still remapped consistently.
-4. Wait for `catching_up: false` in `1c`.
-5. Use the official faucet manually if testnet funds are needed.
-6. Create a validator only after checking the consensus key, balance, amount, commission, and minimum self-delegation.
-7. Monitor logs and signing information continuously.
+4. Choose pruning when prompted: blank/`p` uses custom pruning with keep recent `100` and interval `20`; `a` uses archive mode and retains application-state history.
+5. Choose the install runtime: blank/`no` keeps the direct `worrelld` systemd service; `yes` installs pinned Cosmovisor with automatic downloads disabled. You can migrate a direct node later through `1g`.
+6. Wait for `catching_up: false` in `1c`.
+7. Use the official faucet manually if testnet funds are needed.
+8. Create a validator only after checking the consensus key, balance, amount, commission, and minimum self-delegation.
+9. Monitor logs and signing information continuously.
+
+## Pruning
+
+During `1a`, choose `p`/blank for pruned mode or `a` for archive mode. Pruned mode writes:
+
+```toml
+pruning = "custom"
+pruning-keep-recent = "100"
+pruning-interval = "20"
+```
+
+Archive mode writes `pruning = "nothing"` plus zero custom values, retaining application-state history and requiring substantially more disk space. Re-running `1a` is a redeployment: the old node home is moved to a timestamped backup, so changing modes does not restore history already deleted by a previous pruned database. Pruning is independent of direct/Cosmovisor runtime and is not changed by `1g` migration.
+
+## Apply snapshot
+
+Select `1h` -> provider -> `Pruned`. Current verified providers are ITRocket (live `.current_state.json` metadata resolves the rotating archive filename) and Sychonix (concrete `worrell-snapshot.tar.lz4`). Archive snapshots are not advertised until a provider publishes a verified archive. The helper validates LZ4, archive paths, top-level `data/` layout, minimum size, and service restart before replacing only `data/`; it preserves `config/` and the current `priv_validator_state.json`. Type `APPLY-WORRELL-SNAPSHOT` only after reviewing the provider, height, size, and URL.
+
+Snapshot providers may publish pruned state only. Changing `app.toml` to archive cannot recreate historical state deleted by a pruned snapshot.
 
 ## Cosmovisor
 
-Worrell's application wires the Cosmos SDK `x/upgrade` module, so the node can be run through Cosmovisor. The installer configures Cosmovisor automatically for new deployments. Existing direct-binary nodes can use `1g` -> **Migrate current node to Cosmovisor**.
+Worrell's application wires the Cosmos SDK `x/upgrade` module, so the node can be run through Cosmovisor. During `1a`, choose the runtime explicitly: blank/`no` (the default) installs a direct `worrelld` service; `yes` installs and initialises pinned Cosmovisor. Existing direct-binary nodes can use `1g` -> **Migrate current node to Cosmovisor**.
 
-Automatic binary downloads are disabled. For a governance upgrade, stage the exact release and on-chain plan name with **Stage a verified upgrade binary**, then verify the prepared path and upgrade plan before the height. The optional emergency height is only for a coordinated local height-based upgrade and must be independently confirmed. The migration does not delete `data/upgrade-info.json` or node data.
+Cosmovisor is optional at install time. Selecting direct mode does not uninstall an existing Cosmovisor binary, and selecting Cosmovisor does not enable automatic downloads. For a governance upgrade, stage the exact release and on-chain plan name with **Stage a verified upgrade binary**, then verify the prepared path and upgrade plan before the height. The optional emergency height is only for a coordinated local height-based upgrade and must be independently confirmed. The migration does not delete `data/upgrade-info.json` or node data.
 
 Cosmovisor state is stored under `~/.worrell/cosmovisor/`:
 
@@ -87,7 +108,7 @@ backup/
 - Use testnet-only keys and keep mnemonics offline.
 - Never run two nodes with the same validator signing key.
 - Do not expose RPC, REST, gRPC, or Prometheus publicly unless you understand the security impact.
-- No official snapshot source was verified, so the menu intentionally does not offer snapshot application.
+- The menu offers guarded pruned snapshot application from reviewed providers; archive snapshots remain disabled until a provider is verified.
 - `create-validator` and `unjail` are real transactions. Review the preview before confirming.
 - The public endpoint list comes from upstream network metadata and may change.
 
