@@ -24,8 +24,14 @@ valid_upgrade_height() {
 }
 
 preflight_emergency_upgrade() {
-    local home="$1" name="$2" target_dir
-    target_dir="$home/cosmovisor/upgrades/${name,,}"
+    local home="$1" name="$2" target_dir encoded_name
+    encoded_name=$(python3 - "$name" <<'PY2'
+import sys
+from urllib.parse import quote
+print(quote(sys.argv[1].lower(), safe="-_.~"))
+PY2
+)
+    target_dir="$home/cosmovisor/upgrades/$encoded_name"
     [ ! -e "$target_dir" ] || return 1
     [ ! -e "$home/data/upgrade-info.json" ] || return 1
 }

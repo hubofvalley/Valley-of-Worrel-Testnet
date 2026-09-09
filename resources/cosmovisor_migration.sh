@@ -12,6 +12,7 @@ readonly CHAIN_ID="${WORRELL_CHAIN_ID:-worrell-testnet-1}"
 readonly BINARY_DIR="$HOME/go/bin"
 readonly COSMOVISOR_VERSION="${WORRELL_COSMOVISOR_VERSION:-v1.7.3}"
 readonly COSMOVISOR_BIN="$BINARY_DIR/cosmovisor"
+readonly SYSTEMD_UNIT_DIR="${WORRELL_SYSTEMD_UNIT_DIR:-/etc/systemd/system}"
 
 [ "${EUID:-$(id -u)}" -ne 0 ] || { echo -e "${RED}Run as the node OS user, not root.${RESET}" >&2; exit 1; }
 [ -x "$BINARY_DIR/worrelld" ] || { echo -e "${RED}Missing $BINARY_DIR/worrelld. Install Worrell first.${RESET}" >&2; exit 1; }
@@ -48,7 +49,7 @@ was_active=no
 autostart=no
 if sudo systemctl is-active --quiet "$SERVICE"; then was_active=yes; fi
 if sudo systemctl is-enabled --quiet "$SERVICE"; then autostart=yes; fi
-unit="/etc/systemd/system/${SERVICE}.service"
+unit="$SYSTEMD_UNIT_DIR/${SERVICE}.service"
 backup="$HOME/.worrell-backups/cosmovisor-service-$(date +%Y%m%d-%H%M%S).service"
 profile="$HOME/.bash_profile"
 profile_backup="${backup%.service}.bash_profile"
@@ -64,9 +65,13 @@ if [ -f "$profile" ]; then
     profile_existed=yes
 fi
 
+migration_succeeded=no
 rollback() {
     rc=$?
-    trap - ERR
+    if [ "$migration_succeeded" = yes ]; then
+        trap - EXIT
+        exit "$rc"
+    fi
     if [ "$unit_existed" = yes ]; then sudo cp -p "$backup" "$unit"; else sudo rm -f "$unit"; fi
     if [ "$profile_existed" = yes ]; then cp -p "$profile_backup" "$profile"; else rm -f "$profile"; fi
     sudo systemctl daemon-reload 2>/dev/null || true
@@ -75,7 +80,7 @@ rollback() {
     echo -e "${RED}Cosmovisor migration failed; previous service state was restored where possible. Backup: $backup${RESET}" >&2
     exit "$rc"
 }
-trap rollback ERR
+trap rollback EXIT
 
 echo -e "${YELLOW}This migrates ${SERVICE}.service to Cosmovisor without deleting node data or upgrade-info.json.${RESET}"
 if [ "$was_active" = yes ]; then sudo systemctl stop "$SERVICE"; fi
@@ -87,7 +92,8 @@ if [ ! -x "$HOME_DIR/cosmovisor/current/bin/worrelld" ]; then
 fi
 mkdir -p "$HOME_DIR/cosmovisor/upgrades" "$HOME_DIR/cosmovisor/backup"
 
-sudo tee "/etc/systemd/system/${SERVICE}.service" >/dev/null <<EOF
+sudo mkdir -p "$SYSTEMD_UNIT_DIR"
+sudo tee "$unit" >/dev/null <<EOF
 [Unit]
 Description=Cosmovisor Worrell Testnet Node
 After=network-online.target
@@ -132,7 +138,7 @@ if [ "$was_active" = yes ]; then
 else
     sudo systemctl stop "$SERVICE"
 fi
-trap - ERR
+migration_succeeded=yes
 
 echo -e "${GREEN}Cosmovisor migration completed.${RESET}"
 echo -e "${CYAN}Version:${RESET} $COSMOVISOR_VERSION"

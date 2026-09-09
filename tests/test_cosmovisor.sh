@@ -55,7 +55,57 @@ valid_upgrade_height 123
 ! valid_upgrade_height 0
 mkdir -p "$fixture/home/cosmovisor/upgrades" "$fixture/home/data"
 preflight_emergency_upgrade "$fixture/home" 'Worrell Upgrade 1'
+mkdir -p "$fixture/home/cosmovisor/upgrades/worrell%20upgrade%201"
+! preflight_emergency_upgrade "$fixture/home" 'Worrell Upgrade 1'
+rm -rf "$fixture/home/cosmovisor/upgrades/worrell%20upgrade%201"
 touch "$fixture/home/data/upgrade-info.json"
 ! preflight_emergency_upgrade "$fixture/home" 'Worrell Upgrade 1'
 
 echo 'Worrel Cosmovisor routing tests: PASS'
+
+# A failure inside install_cosmovisor after stopping an active node must restore
+# the unit, profile, and both active/enabled states.
+rollback_fixture=$(mktemp -d)
+rollback_bin="$rollback_fixture/bin"
+mkdir -p "$rollback_bin" "$rollback_fixture/home/go/bin" "$rollback_fixture/home/.worrell/config" "$rollback_fixture/systemd"
+touch "$rollback_fixture/home/go/bin/worrelld"
+chmod +x "$rollback_fixture/home/go/bin/worrelld"
+printf 'original profile\n' > "$rollback_fixture/home/.bash_profile"
+printf 'ExecStart=/home/test/go/bin/worrelld start\n' > "$rollback_fixture/systemd/worrelld.service"
+printf 'active=1\nenabled=1\n' > "$rollback_fixture/state"
+cat > "$rollback_bin/sudo" <<'EOS'
+#!/usr/bin/env bash
+exec "$@"
+EOS
+cat > "$rollback_bin/systemctl" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+state="$FAKE_SYSTEMD_STATE"
+case "$1" in
+  is-active) grep -q '^active=1$' "$state" ;;
+  is-enabled) grep -q '^enabled=1$' "$state" ;;
+  stop) sed -i 's/^active=1$/active=0/' "$state" ;;
+  start) sed -i 's/^active=0$/active=1/' "$state" ;;
+  enable) sed -i 's/^enabled=0$/enabled=1/' "$state" ;;
+  disable) sed -i 's/^enabled=1$/enabled=0/' "$state" ;;
+  daemon-reload) ;;
+  *) exit 1 ;;
+esac
+EOS
+cat > "$rollback_bin/curl" <<'EOS'
+#!/usr/bin/env bash
+exit 1
+EOS
+chmod +x "$rollback_bin"/*
+set +e
+HOME="$rollback_fixture/home" PATH="$rollback_bin:$PATH" WORRELL_HOME="$rollback_fixture/home/.worrell" WORRELL_SERVICE_NAME=worrelld WORRELL_SYSTEMD_UNIT_DIR="$rollback_fixture/systemd" FAKE_SYSTEMD_STATE="$rollback_fixture/state" bash "$migration" >/tmp/worrel-migration-failure.out 2>&1
+migration_rc=$?
+set -e
+test "$migration_rc" -ne 0
+grep -q 'ExecStart=/home/test/go/bin/worrelld start' "$rollback_fixture/systemd/worrelld.service"
+grep -q '^original profile$' "$rollback_fixture/home/.bash_profile"
+grep -q '^active=1$' "$rollback_fixture/state"
+grep -q '^enabled=1$' "$rollback_fixture/state"
+rm -rf "$rollback_fixture" /tmp/worrel-migration-failure.out
+
+echo 'Worrel Cosmovisor rollback tests: PASS'
