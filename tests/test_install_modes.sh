@@ -11,6 +11,17 @@ grep -q 'Interactive terminal required' "$menu"
 grep -q 'Grand Valley' "$menu"
 grep -q "| '__|" "$menu"
 grep -q "| '_" "$menu"
+python3 - "$menu" <<'PYLOGO'
+from pathlib import Path
+import sys
+s = Path(sys.argv[1]).read_text()
+start = s.index("LOGO=$(cat <<'EOF'")
+end = s.index("\nEOF\n)", start)
+lines = s[start:end].splitlines()[1:]
+assert all(ord(c) < 128 for line in lines for c in line)
+assert max(map(len, lines)) <= 79
+assert "Grand Valley" in s[start:end]
+PYLOGO
 grep -q 'service_mode=direct' "$menu"
 grep -q 'service_mode=cosmovisor' "$menu"
 grep -q -- '--service-mode "$service_mode"' "$menu"
