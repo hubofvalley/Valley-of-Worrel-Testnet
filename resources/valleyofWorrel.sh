@@ -14,7 +14,7 @@ WORRELL_TARGET_VERSION=${WORRELL_TARGET_VERSION:-v0.1.2}
 WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://worrel-testnet-rpc.oshvank.xyz}
 WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
-readonly VALLEY_INSTALLER_SHA256="b08995459d0a219ac3457d78c843efcc331a368cf492704324d5a93cec38a7bc"
+readonly VALLEY_INSTALLER_SHA256="bddfb1b1f15081e2fbd8fe7fcc173617ee8fce089a5c5f9a428d1c6320b3c76f"
 readonly VALLEY_UPDATER_SHA256="07ceef513c3acc65c6a4efa6540f92bf037ce66b16d524f424ca2c07e55a1b70"
 readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="c37898ad62f0cd8b031cfc4a19b129473ab56a457cb2ca4a3d5da32fa6334d90"
 readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="68414d1792a1f5bde935a5a1e9c14660a881b185ed5b95a199a9a68bb76a72a7"
@@ -175,6 +175,17 @@ install_node() {
     read -r -p "Proceed with installation/redeployment? (yes/no): " answer
     if [[ "${answer,,}" != yes ]]; then echo -e "${RED}Installation cancelled.${RESET}"; menu; return; fi
     while true; do
+        echo -e "${CYAN}Pruning selection${RESET}"
+        echo "pruned  = keep recent 100 states and prune every 20 blocks."
+        echo "archive = retain all application-state history; requires substantially more disk space."
+        read -r -p "Run node as pruned or archive? (p=pruned, a=archive) [p]: " answer
+        case "${answer,,}" in
+            ""|p|pruned) pruning_mode=pruned; break ;;
+            a|archive) pruning_mode=archive; break ;;
+            *) echo -e "${RED}Please answer p/pruned or a/archive.${RESET}" ;;
+        esac
+    done
+    while true; do
         echo -e "${CYAN}Runtime selection${RESET}"
         echo "no  = direct worrelld service; you can migrate later via 1g."
         echo "yes = pinned Cosmovisor service; automatic binary downloads remain disabled."
@@ -185,7 +196,7 @@ install_node() {
             *) echo -e "${RED}Please answer yes or no.${RESET}" ;;
         esac
     done
-    run_pinned_child worrelld_node_install_testnet.sh "$VALLEY_INSTALLER_SHA256" --service-mode "$service_mode"
+    run_pinned_child worrelld_node_install_testnet.sh "$VALLEY_INSTALLER_SHA256" --pruning-mode "$pruning_mode" --service-mode "$service_mode"
     # Refresh the one-time service/home settings saved by the child installer.
     # shellcheck disable=SC1091
     source "$HOME/.bash_profile" 2>/dev/null || true
@@ -461,7 +472,7 @@ delete_node() {
 
 show_guidelines() {
     echo -e "${GREEN}Guidelines${RESET}"
-    echo "- 1a installs/redeploys; choose direct worrelld or Cosmovisor. Existing data is moved to a timestamped backup."
+    echo "- 1a installs/redeploys; choose pruned/archive storage and direct worrelld/Cosmovisor runtime. Existing data is moved to a timestamped backup."
     echo "- 1b updates the binary with release checksum verification; Cosmovisor nodes use 1g."
     echo "- 1g manages Cosmovisor: migration, status, and verified upgrade staging."
     echo "- 1c compares local/public heights; wait for catching_up=false before staking."

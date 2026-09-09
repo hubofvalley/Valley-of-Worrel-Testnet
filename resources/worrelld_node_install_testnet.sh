@@ -18,9 +18,17 @@ readonly GENESIS_URL="https://raw.githubusercontent.com/worrellchain/networks/ma
 readonly GENESIS_SHA256="a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd"
 readonly PEERS="bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656"
 
+PRUNING_MODE=pruned
+PRUNING_MODE_ARG_SET=no
 SERVICE_MODE=direct
 while [ "$#" -gt 0 ]; do
     case "$1" in
+        --pruning-mode)
+            [ "$#" -ge 2 ] || { echo -e "${RED}--pruning-mode requires pruned or archive.${RESET}" >&2; exit 1; }
+            PRUNING_MODE="$2"
+            PRUNING_MODE_ARG_SET=yes
+            shift 2
+            ;;
         --service-mode)
             [ "$#" -ge 2 ] || { echo -e "${RED}--service-mode requires direct or cosmovisor.${RESET}" >&2; exit 1; }
             SERVICE_MODE="$2"
@@ -32,6 +40,10 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
+case "$PRUNING_MODE" in
+    pruned|archive) ;;
+    *) echo -e "${RED}Invalid pruning mode: $PRUNING_MODE. Use pruned or archive.${RESET}" >&2; exit 1 ;;
+esac
 case "$SERVICE_MODE" in
     direct|cosmovisor) ;;
     *) echo -e "${RED}Invalid service mode: $SERVICE_MODE. Use direct or cosmovisor.${RESET}" >&2; exit 1 ;;
@@ -61,15 +73,6 @@ save_env() {
     } >> "$profile"
 }
 
-set_toml_value() {
-    local file="$1" key="$2" value="$3"
-    if grep -qE "^[[:space:]]*${key}[[:space:]]*=" "$file"; then
-        sed -i -E "s|^[[:space:]]*${key}[[:space:]]*=.*|${key} = ${value}|" "$file"
-    else
-        printf '\n%s = %s\n' "$key" "$value" >> "$file"
-    fi
-}
-
 remap_config() {
     local prefix="$1" config="$HOME_DIR/config/config.toml" app="$HOME_DIR/config/app.toml"
     local p2p="${prefix}656" rpc="${prefix}657" abci="${prefix}658" prom="${prefix}660" api="${prefix}317" grpc="${prefix}090" grpc_web="${prefix}091"
@@ -85,11 +88,13 @@ def rewrite(path, section_values):
         stripped = line.strip()
         if stripped.startswith("[") and stripped.endswith("]"):
             section = stripped.strip("[]")
-        for key, value in section_values.get(section, {}).items():
-            if stripped.startswith(key) and "=" in stripped:
-                indent = line[:len(line) - len(line.lstrip())]
-                line = f"{indent}{key} = {value}"
-                break
+        if "=" in stripped and not stripped.startswith("#"):
+            key_name = stripped.split("=", 1)[0].strip()
+            for key, value in section_values.get(section, {}).items():
+                if key_name == key:
+                    indent = line[:len(line) - len(line.lstrip())]
+                    line = f"{indent}{key} = {value}"
+                    break
         out.append(line)
     Path(path).write_text("\n".join(out) + "\n")
 
@@ -105,6 +110,63 @@ rewrite(os.environ["APP"], {
     "grpc-web": {"address": f'"127.0.0.1:{os.environ["GRPC_WEB_PORT"]}"'},
     "": {"minimum-gas-prices": '"0.025uworrell"'},
 })
+PY
+}
+
+configure_pruning() {
+    local app="$HOME_DIR/config/app.toml"
+    APP="$app" PRUNING_MODE="$PRUNING_MODE" python3 - <<'PY'
+from pathlib import Path
+import os
+
+path = Path(os.environ["APP"])
+mode = os.environ["PRUNING_MODE"]
+target = {
+    "pruned": {
+        "pruning": '"custom"',
+        "pruning-keep-recent": '"100"',
+        "pruning-interval": '"20"',
+    },
+    "archive": {
+        "pruning": '"nothing"',
+        "pruning-keep-recent": '"0"',
+        "pruning-interval": '"0"',
+    },
+}[mode]
+lines = path.read_text().splitlines()
+section = ""
+seen = {key: 0 for key in target}
+out = []
+for line in lines:
+    stripped = line.strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        section = stripped[1:-1]
+    if section == "" and "=" in stripped and not stripped.startswith("#"):
+        key = stripped.split("=", 1)[0].strip()
+        if key in target:
+            seen[key] += 1
+            if seen[key] > 1:
+                raise SystemExit(f"duplicate root pruning key: {key}")
+            indent = line[:len(line) - len(line.lstrip())]
+            line = f"{indent}{key} = {target[key]}"
+    out.append(line)
+missing = [key for key, count in seen.items() if count != 1]
+if missing:
+    raise SystemExit("missing root pruning keys: " + ", ".join(missing))
+path.write_text("\n".join(out) + "\n")
+
+section = ""
+verified = {}
+for line in path.read_text().splitlines():
+    stripped = line.strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        section = stripped[1:-1]
+    if section == "" and "=" in stripped and not stripped.startswith("#"):
+        key, value = (part.strip() for part in stripped.split("=", 1))
+        if key in target:
+            verified[key] = value
+if verified != target:
+    raise SystemExit(f"pruning verification failed: {verified}")
 PY
 }
 
@@ -172,6 +234,20 @@ if [ ! -t 0 ]; then
     exit 1
 fi
 
+if [ "$PRUNING_MODE_ARG_SET" = no ]; then
+    echo -e "${CYAN}Pruning selection${RESET}"
+    echo "pruned  = custom pruning; keep recent 100 states and prune every 20 blocks."
+    echo "archive = retain all application-state history; requires substantially more disk space."
+    while true; do
+        read -r -p "Run node as pruned or archive? (p=pruned, a=archive) [p]: " pruning_choice
+        case "${pruning_choice,,}" in
+            ""|p|pruned) PRUNING_MODE=pruned; break ;;
+            a|archive) PRUNING_MODE=archive; break ;;
+            *) echo -e "${RED}Please answer p/pruned or a/archive.${RESET}" ;;
+        esac
+    done
+fi
+
 read -r -p "Enter node moniker [Worrel-Grand-Valley]: " MONIKER
 MONIKER=${MONIKER:-Worrel-Grand-Valley}
 while true; do
@@ -222,6 +298,7 @@ curl -fsSL "$GENESIS_URL" -o "$HOME_DIR/config/genesis.json"
 echo "${GENESIS_SHA256}  $HOME_DIR/config/genesis.json" | sha256sum -c -
 worrelld genesis validate-genesis --home "$HOME_DIR"
 
+configure_pruning
 remap_config "$PORT_PREFIX"
 sed -i -E "s|^[[:space:]]*persistent_peers[[:space:]]*=.*|persistent_peers = \"${PEERS}\"|" "$HOME_DIR/config/config.toml"
 
@@ -283,6 +360,7 @@ else
     exit 1
 fi
 echo -e "${CYAN}Home:${RESET} $HOME_DIR"
+echo -e "${CYAN}Pruning:${RESET} $PRUNING_MODE"
 echo -e "${CYAN}RPC:${RESET} http://127.0.0.1:${PORT_PREFIX}657"
 if [ "$SERVICE_MODE" = cosmovisor ]; then
     echo -e "${CYAN}Cosmovisor:${RESET} $COSMOVISOR_BIN ${COSMOVISOR_VERSION}"

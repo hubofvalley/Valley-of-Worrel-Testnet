@@ -16,7 +16,7 @@ Run as the node OS user. Do not use `sudo bash`; the scripts request sudo only f
 
 | Option | Behaviour | Risk |
 |---|---|---|
-| `1a` | Deploys or redeploys the node through the audited installer, then asks whether to run the service directly with `worrelld` or through pinned Cosmovisor. Backs up an existing `~/.worrell` before replacement. | High: replaces node data after confirmation. |
+| `1a` | Deploys or redeploys the node through the audited installer, then asks whether to use pruned or archive storage, and whether to run the service directly with `worrelld` or through pinned Cosmovisor. Backs up an existing `~/.worrell` before replacement. | High: replaces node data after confirmation. |
 | `1b` | Updates the pinned `worrelld` release after checksum verification when the node is using the direct systemd binary. Cosmovisor-managed nodes are routed to `1g`. | Medium: service restart/downtime. |
 | `1c` | Shows local and public heights, chain ID, catching-up state, and block difference. | Read-only. |
 | `1d` | Follows the selected service journal. | Read-only. |
@@ -62,11 +62,24 @@ Leaves the menu. If the installer saved variables, run `source ~/.bash_profile` 
 1. Review the installer and release checksum source.
 2. Run `1a` as a dedicated node OS user.
 3. Choose a two-digit port prefix from `10` through `64` if the default ports are occupied. Prefix `26` keeps consensus ports at 26656/26657/26658; API/gRPC/Prometheus are still remapped consistently.
-4. Choose the install runtime when prompted: blank/`no` keeps the direct `worrelld` systemd service; `yes` installs pinned Cosmovisor with automatic downloads disabled. You can migrate a direct node later through `1g`.
-5. Wait for `catching_up: false` in `1c`.
-6. Use the official faucet manually if testnet funds are needed.
-7. Create a validator only after checking the consensus key, balance, amount, commission, and minimum self-delegation.
-8. Monitor logs and signing information continuously.
+4. Choose pruning when prompted: blank/`p` uses custom pruning with keep recent `100` and interval `20`; `a` uses archive mode and retains application-state history.
+5. Choose the install runtime: blank/`no` keeps the direct `worrelld` systemd service; `yes` installs pinned Cosmovisor with automatic downloads disabled. You can migrate a direct node later through `1g`.
+6. Wait for `catching_up: false` in `1c`.
+7. Use the official faucet manually if testnet funds are needed.
+8. Create a validator only after checking the consensus key, balance, amount, commission, and minimum self-delegation.
+9. Monitor logs and signing information continuously.
+
+## Pruning
+
+During `1a`, choose `p`/blank for pruned mode or `a` for archive mode. Pruned mode writes:
+
+```toml
+pruning = "custom"
+pruning-keep-recent = "100"
+pruning-interval = "20"
+```
+
+Archive mode writes `pruning = "nothing"` plus zero custom values, retaining application-state history and requiring substantially more disk space. Re-running `1a` is a redeployment: the old node home is moved to a timestamped backup, so changing modes does not restore history already deleted by a previous pruned database. Pruning is independent of direct/Cosmovisor runtime and is not changed by `1g` migration.
 
 ## Cosmovisor
 

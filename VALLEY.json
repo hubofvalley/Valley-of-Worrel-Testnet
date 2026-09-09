@@ -14,17 +14,60 @@
       "binary": "worrelld",
       "service": "worrelld.service",
       "home": "$HOME/.worrell",
-      "config_paths": ["$HOME/.worrell/config/config.toml", "$HOME/.worrell/config/app.toml"],
+      "config_paths": [
+        "$HOME/.worrell/config/config.toml",
+        "$HOME/.worrell/config/app.toml"
+      ],
       "dependencies": [],
-      "capabilities": ["install", "update", "status", "logs", "peers", "keys", "validator_tx", "cosmovisor", "backup", "delete"],
+      "capabilities": [
+        "install",
+        "update",
+        "status",
+        "logs",
+        "peers",
+        "keys",
+        "validator_tx",
+        "pruning",
+        "cosmovisor",
+        "backup",
+        "delete"
+      ],
       "ports": [
-        {"role": "p2p", "default": 26656, "exposure": "public"},
-        {"role": "rpc", "default": 26657, "exposure": "loopback"},
-        {"role": "abci", "default": 26658, "exposure": "loopback"},
-        {"role": "prometheus", "default": 26660, "exposure": "loopback"},
-        {"role": "api", "default": 1317, "exposure": "loopback"},
-        {"role": "grpc", "default": 9090, "exposure": "loopback"},
-        {"role": "grpc-web", "default": 9091, "exposure": "loopback"}
+        {
+          "role": "p2p",
+          "default": 26656,
+          "exposure": "public"
+        },
+        {
+          "role": "rpc",
+          "default": 26657,
+          "exposure": "loopback"
+        },
+        {
+          "role": "abci",
+          "default": 26658,
+          "exposure": "loopback"
+        },
+        {
+          "role": "prometheus",
+          "default": 26660,
+          "exposure": "loopback"
+        },
+        {
+          "role": "api",
+          "default": 1317,
+          "exposure": "loopback"
+        },
+        {
+          "role": "grpc",
+          "default": 9090,
+          "exposure": "loopback"
+        },
+        {
+          "role": "grpc-web",
+          "default": 9091,
+          "exposure": "loopback"
+        }
       ]
     }
   ],

@@ -4,7 +4,7 @@ Worrell's application includes the Cosmos SDK `x/upgrade` module and prioritises
 
 ## New installation
 
-Cosmovisor is optional during `1a` installation. The prompt is:
+Pruning selection is independent of runtime selection. Cosmovisor is optional during `1a` installation. The prompt is:
 
 ```text
 Install Cosmovisor for this deployment? (yes/no) [no]:
@@ -20,7 +20,7 @@ cosmovisor run start --home ~/.worrell
 
 The chain ID is stored during node initialization. Worrell v0.1.2 rejects `--chain-id` on `start`, so the service intentionally passes only `--home` to the application.
 
-The default is direct mode. Selecting direct mode does not uninstall an existing Cosmovisor binary. Selecting Cosmovisor keeps automatic binary downloads disabled for validator safety. To change an existing direct node without rebuilding its home, use the migration flow below. Re-running `1a` is a redeployment: existing node data is moved to a timestamped backup.
+The default is direct mode. The pruning choice made during installation is preserved by the runtime choice and is not changed by direct-to-Cosmovisor migration. Selecting direct mode does not uninstall an existing Cosmovisor binary. Selecting Cosmovisor keeps automatic binary downloads disabled for validator safety. To change an existing direct node without rebuilding its home, use the migration flow below. Re-running `1a` is a redeployment: existing node data is moved to a timestamped backup.
 
 ## Existing node migration
 

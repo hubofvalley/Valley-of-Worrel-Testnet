@@ -53,6 +53,24 @@ echo 'a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd  '"$WORRE
 worrelld genesis validate-genesis --home "$WORRELL_HOME"
 ```
 
+Choose one application-state retention policy before starting the service. For a normal validator, use pruned mode:
+
+```toml
+pruning = "custom"
+pruning-keep-recent = "100"
+pruning-interval = "20"
+```
+
+For an archive node, retain all application-state history:
+
+```toml
+pruning = "nothing"
+pruning-keep-recent = "0"
+pruning-interval = "0"
+```
+
+Changing from pruned to archive later cannot recreate historical states already deleted. Pruning selection is independent of direct/Cosmovisor runtime.
+
 Set the official peers in `config.toml`:
 
 ```toml

@@ -24,6 +24,7 @@ assert "Grand Valley" in s[start:end]
 PYLOGO
 grep -q 'service_mode=direct' "$menu"
 grep -q 'service_mode=cosmovisor' "$menu"
+grep -q -- '--pruning-mode "$pruning_mode"' "$menu"
 grep -q -- '--service-mode "$service_mode"' "$menu"
 grep -q 'SERVICE_EXEC_START="$BINARY_DIR/worrelld start --home $HOME_DIR"' "$installer"
 grep -q 'SERVICE_EXEC_START="$COSMOVISOR_BIN run start --home $HOME_DIR"' "$installer"
