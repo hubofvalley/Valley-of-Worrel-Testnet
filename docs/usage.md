@@ -17,11 +17,12 @@ Run as the node OS user. Do not use `sudo bash`; the scripts request sudo only f
 | Option | Behaviour | Risk |
 |---|---|---|
 | `1a` | Deploys or redeploys the node through the audited installer. Backs up an existing `~/.worrell` before replacement. | High: replaces node data after confirmation. |
-| `1b` | Updates the pinned `worrelld` release after checksum verification. | Medium: service restart/downtime. |
+| `1b` | Updates the pinned `worrelld` release after checksum verification when the node is using the direct systemd binary. Cosmovisor-managed nodes are routed to `1g`. | Medium: service restart/downtime. |
 | `1c` | Shows local and public heights, chain ID, catching-up state, and block difference. | Read-only. |
 | `1d` | Follows the selected service journal. | Read-only. |
 | `1e` | Sets manual persistent peers or restores the two peers from official network metadata. | Medium: changes config. |
 | `1f` | Queries an operator key balance. | Read-only. |
+| `1g` | Manages Cosmovisor: migrates an existing node, shows status, or stages a verified upgrade binary. | Medium/high: service unit changes or upgrade preparation. |
 
 ### 2. Validator / Key Interactions
 
@@ -65,6 +66,21 @@ Leaves the menu. If the installer saved variables, run `source ~/.bash_profile` 
 5. Use the official faucet manually if testnet funds are needed.
 6. Create a validator only after checking the consensus key, balance, amount, commission, and minimum self-delegation.
 7. Monitor logs and signing information continuously.
+
+## Cosmovisor
+
+Worrell's application wires the Cosmos SDK `x/upgrade` module, so the node can be run through Cosmovisor. The installer configures Cosmovisor automatically for new deployments. Existing direct-binary nodes can use `1g` -> **Migrate current node to Cosmovisor**.
+
+Automatic binary downloads are disabled. For a governance upgrade, stage the exact release and on-chain plan name with **Stage a verified upgrade binary**, then verify the prepared path and upgrade plan before the height. The optional emergency height is only for a coordinated local height-based upgrade and must be independently confirmed. The migration does not delete `data/upgrade-info.json` or node data.
+
+Cosmovisor state is stored under `~/.worrell/cosmovisor/`:
+
+```text
+current -> genesis (or upgrades/<upgrade-name>)
+genesis/bin/worrelld
+upgrades/<upgrade-name>/bin/worrelld
+backup/
+```
 
 ## Safety
 

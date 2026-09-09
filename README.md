@@ -4,6 +4,14 @@ Interactive terminal toolkit by **Grand Valley** for deploying and managing a Wo
 
 > Official project spelling: **Worrell**. The Valley product name is **Valley of Worrel** to match the requested Grand Valley naming.
 
+## Overview
+
+**Valley of Worrel Testnet** is an open-source Grand Valley project for operating nodes and validators on the **Worrell** test network.
+
+**Worrell** is a proof-of-stake blockchain built with Ignite CLI and the Cosmos SDK, using CometBFT consensus and focused on payments and energy infrastructure. The project includes staking and delegation, on-chain governance, dynamic inflation, and IBC support that is installed upstream but disabled at genesis while the network stabilises.
+
+This Valley package turns the official Worrell node procedure into an auditable, interactive workflow. It covers node installation, configuration, syncing, peer management, validator/key operations, systemd lifecycle, and Cosmovisor-based upgrade preparation. It does not claim to provide an official Worrell endpoint, faucet automation, or automatic transaction signing.
+
 ## Network
 
 | Field | Value |
@@ -45,6 +53,7 @@ Run it as the OS user that owns the node. Do not run the launcher with `sudo`.
 - Official genesis download and `worrelld genesis validate-genesis` gate.
 - Official persistent peers, configurable two-digit local port prefix, and optional UFW.
 - Idempotent systemd service installation with ownership and backup checks.
+- Cosmovisor-managed service using the Worrell `x/upgrade` module, with automatic binary downloads disabled and explicit verified upgrade staging.
 - Read-only status, logs, peer management, key/balance helpers, validator creation, and unjail flow.
 - No snapshot automation: no official Worrell Testnet snapshot source was verified.
 - No automatic faucet or transaction signing: funds and signing remain operator-controlled.
@@ -54,6 +63,7 @@ Run it as the OS user that owns the node. Do not run the launcher with `sudo`.
 - [Usage guide](docs/usage.md)
 - [Manual node guide](docs/node-guide.md)
 - [Version manifest](VERSIONS.json)
+- [Cosmovisor upgrade guide](docs/cosmovisor.md)
 
 ## Official links
 
