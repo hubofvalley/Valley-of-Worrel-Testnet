@@ -23,6 +23,7 @@ Run as the node OS user. Do not use `sudo bash`; the scripts request sudo only f
 | `1e` | Sets manual persistent peers or restores the two peers from official network metadata. | Medium: changes config. |
 | `1f` | Queries an operator key balance. | Read-only. |
 | `1g` | Manages Cosmovisor: migrates an existing node, shows status, or stages a verified upgrade binary. | Medium/high: service unit changes or upgrade preparation. |
+| `1h` | Applies a verified pruned snapshot from ITRocket or Sychonix after archive validation and explicit confirmation. Preserves config and validator state. | High: replaces node data after confirmation. |
 
 ### 2. Validator / Key Interactions
 
@@ -81,6 +82,12 @@ pruning-interval = "20"
 
 Archive mode writes `pruning = "nothing"` plus zero custom values, retaining application-state history and requiring substantially more disk space. Re-running `1a` is a redeployment: the old node home is moved to a timestamped backup, so changing modes does not restore history already deleted by a previous pruned database. Pruning is independent of direct/Cosmovisor runtime and is not changed by `1g` migration.
 
+## Apply snapshot
+
+Select `1h` -> provider -> `Pruned`. Current verified providers are ITRocket (live `.current_state.json` metadata resolves the rotating archive filename) and Sychonix (concrete `worrell-snapshot.tar.lz4`). Archive snapshots are not advertised until a provider publishes a verified archive. The helper validates LZ4, archive paths, top-level `data/` layout, minimum size, and service restart before replacing only `data/`; it preserves `config/` and the current `priv_validator_state.json`. Type `APPLY-WORRELL-SNAPSHOT` only after reviewing the provider, height, size, and URL.
+
+Snapshot providers may publish pruned state only. Changing `app.toml` to archive cannot recreate historical state deleted by a pruned snapshot.
+
 ## Cosmovisor
 
 Worrell's application wires the Cosmos SDK `x/upgrade` module, so the node can be run through Cosmovisor. During `1a`, choose the runtime explicitly: blank/`no` (the default) installs a direct `worrelld` service; `yes` installs and initialises pinned Cosmovisor. Existing direct-binary nodes can use `1g` -> **Migrate current node to Cosmovisor**.
@@ -101,7 +108,7 @@ backup/
 - Use testnet-only keys and keep mnemonics offline.
 - Never run two nodes with the same validator signing key.
 - Do not expose RPC, REST, gRPC, or Prometheus publicly unless you understand the security impact.
-- No official snapshot source was verified, so the menu intentionally does not offer snapshot application.
+- The menu offers guarded pruned snapshot application from reviewed providers; archive snapshots remain disabled until a provider is verified.
 - `create-validator` and `unjail` are real transactions. Review the preview before confirming.
 - The public endpoint list comes from upstream network metadata and may change.
 

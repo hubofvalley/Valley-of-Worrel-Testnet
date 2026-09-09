@@ -27,6 +27,7 @@
         "peers",
         "keys",
         "validator_tx",
+        "snapshot",
         "pruning",
         "cosmovisor",
         "backup",

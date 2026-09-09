@@ -18,6 +18,7 @@ readonly VALLEY_INSTALLER_SHA256="bddfb1b1f15081e2fbd8fe7fcc173617ee8fce089a5c5f
 readonly VALLEY_UPDATER_SHA256="07ceef513c3acc65c6a4efa6540f92bf037ce66b16d524f424ca2c07e55a1b70"
 readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="c37898ad62f0cd8b031cfc4a19b129473ab56a457cb2ca4a3d5da32fa6334d90"
 readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="68414d1792a1f5bde935a5a1e9c14660a881b185ed5b95a199a9a68bb76a72a7"
+readonly VALLEY_SNAPSHOT_SHA256="ceeb3dcd8e74172c93fc46b39b17c7874165380b1d242b1514fcb852ff1a7a03"
 readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/44d8c4f6c77beb3089adb02f7a07c294d72745c1/resources"
 
 LOGO=$(cat <<'EOF'
@@ -85,6 +86,11 @@ network_status() {
 
 local_height() { local_status | jq -r '.result.sync_info.latest_block_height // empty'; }
 network_height() { network_status | jq -r '.result.sync_info.latest_block_height // empty'; }
+local_catching_up() {
+    local response
+    response=$(local_status "${1:-}" || true)
+    jq -r 'if .result.sync_info.catching_up == null then "unknown" else .result.sync_info.catching_up end' <<< "$response" 2>/dev/null || printf '%s\n' unknown
+}
 
 run_pinned_child() {
     local script="$1" expected="$2" path tmp actual rc
@@ -95,6 +101,7 @@ run_pinned_child() {
         worrelld_update.sh) expected="$VALLEY_UPDATER_SHA256" ;;
         cosmovisor_migration.sh) expected="$VALLEY_COSMOVISOR_MIGRATION_SHA256" ;;
         worrelld_cosmovisor_upgrade.sh) expected="$VALLEY_COSMOVISOR_UPGRADE_SHA256" ;;
+        apply_snapshot.sh) expected="$VALLEY_SNAPSHOT_SHA256" ;;
         *) echo -e "${RED}Unknown child script. Refusing execution.${RESET}" >&2; return 1 ;;
     esac
     path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$script"
@@ -282,6 +289,11 @@ manage_cosmovisor() {
     esac
 }
 
+apply_snapshot() {
+    run_pinned_child apply_snapshot.sh "$VALLEY_SNAPSHOT_SHA256"
+    menu
+}
+
 update_node() {
     local mode
     mode=$(runtime_mode)
@@ -305,7 +317,7 @@ update_node() {
 show_status() {
     local lh nh diff catching port
     lh=$(local_height || true); nh=$(network_height || true); port=$(get_local_rpc_port); port=${port:-26657}
-    catching=$(local_status "$port" | jq -r '.result.sync_info.catching_up // "unknown"' 2>/dev/null || echo unknown)
+    catching=$(local_catching_up "$port")
     echo -e "${GREEN}Worrell node status${RESET}"
     echo "Local RPC: http://127.0.0.1:${port}"
     echo "Local height: ${lh:-unavailable}"
@@ -374,7 +386,7 @@ query_balance() {
 
 create_validator() {
     local name moniker amount rate max_rate max_change min_self tmp sync answer
-    sync=$(local_status | jq -r '.result.sync_info.catching_up // "unknown"' 2>/dev/null || echo unknown)
+    sync=$(local_catching_up)
     [ "$sync" = false ] || { echo -e "${RED}Node is not confirmed synced (catching_up=$sync). Wait, then retry.${RESET}"; prompt_back; menu; return; }
     read -r -p "Key name: " name
     worrell keys show "$name" -a --home "$WORRELL_HOME" >/dev/null
@@ -474,6 +486,7 @@ show_guidelines() {
     echo -e "${GREEN}Guidelines${RESET}"
     echo "- 1a installs/redeploys; choose pruned/archive storage and direct worrelld/Cosmovisor runtime. Existing data is moved to a timestamped backup."
     echo "- 1b updates the binary with release checksum verification; Cosmovisor nodes use 1g."
+    echo "- 1h applies a verified pruned snapshot from ITRocket or Sychonix; it preserves validator state and config."
     echo "- 1g manages Cosmovisor: migration, status, and verified upgrade staging."
     echo "- 1c compares local/public heights; wait for catching_up=false before staking."
     echo "- 1d follows service logs; press Ctrl+C to return."
@@ -503,6 +516,7 @@ menu() {
     echo "   e. Configure persistent peers"
     echo "   f. Query account balance"
     echo "   g. Manage Cosmovisor"
+    echo "   h. Apply Snapshot"
     echo -e "${GREEN}2. Validator/Key Interactions${RESET}"
     echo "   a. Create / recover / list keys"
     echo "   b. Show consensus public key"
@@ -532,6 +546,7 @@ menu() {
                 e) set_peers ;;
                 f) query_balance ;;
                 g) manage_cosmovisor ;;
+                h) apply_snapshot ;;
                 *) menu ;;
             esac
             ;;
