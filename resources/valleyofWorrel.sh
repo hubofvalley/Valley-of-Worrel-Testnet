@@ -18,7 +18,7 @@ readonly VALLEY_INSTALLER_SHA256="bddfb1b1f15081e2fbd8fe7fcc173617ee8fce089a5c5f
 readonly VALLEY_UPDATER_SHA256="07ceef513c3acc65c6a4efa6540f92bf037ce66b16d524f424ca2c07e55a1b70"
 readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="c37898ad62f0cd8b031cfc4a19b129473ab56a457cb2ca4a3d5da32fa6334d90"
 readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="68414d1792a1f5bde935a5a1e9c14660a881b185ed5b95a199a9a68bb76a72a7"
-readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/a00562c6fdf6fcac92cff70dc2bdb38253d89084/resources"
+readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/44d8c4f6c77beb3089adb02f7a07c294d72745c1/resources"
 
 LOGO=$(cat <<'EOF'
  __        __                    _
