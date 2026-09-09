@@ -14,10 +14,10 @@ WORRELL_TARGET_VERSION=${WORRELL_TARGET_VERSION:-v0.1.2}
 WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://worrel-testnet-rpc.oshvank.xyz}
 WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
-readonly VALLEY_INSTALLER_SHA256="6ddc5c07f4df2f03a489f752d149afac7b0e04621fea1889539b5e8d3a841424"
+readonly VALLEY_INSTALLER_SHA256="45aff6d87b79827787bd5efbbaf63e363c32075e3b3ef497241048560de473ec"
 readonly VALLEY_UPDATER_SHA256="07ceef513c3acc65c6a4efa6540f92bf037ce66b16d524f424ca2c07e55a1b70"
-readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="918eb5092d414435dcdccaa36529ece8551d8c063b7548695aed2054faaa9db4"
-readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="07715cb8bc5d8e059d9dc0eba534da0284af43c5ce8a7d5dd6d86778cc5c27ac"
+readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="9df395e015b0add3b8d73865425f8cd397a4dcdcf9329e65ba34c61253f298f7"
+readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="374a7f2f1e2f268ad328414d71baf4a73df7dd1b8b2af165e21e18d5e819dacc"
 readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/693424d72619d157bdbab8145c9b8ed5e42249c1/resources"
 
 LOGO=''
@@ -113,8 +113,8 @@ run_pinned_child() {
 }
 
 show_intro() {
-    local version="not installed; target $WORRELL_TARGET_VERSION"
-    if command -v worrelld >/dev/null 2>&1; then version=$(worrelld version --long 2>/dev/null | head -1 || true); fi
+    local version="not installed; target $WORRELL_TARGET_VERSION" worrelld_bin=""
+    if worrelld_bin=$(worrell_bin 2>/dev/null); then version=$("$worrelld_bin" version --long 2>/dev/null | head -1 || true); fi
     echo -e "
 Valley of Worrel by ${ORANGE}Grand Valley${RESET}
 
@@ -130,7 +130,7 @@ ${YELLOW}| Category  | Requirements |
 - current chain: ${CYAN}Worrell Testnet${RESET}
 - current chain ID: ${CYAN}${WORRELL_CHAIN_ID}${RESET}
 - native denom: ${CYAN}uworrell${RESET} (1 WORRELL = 1,000,000 uworrell)
-- binary: ${CYAN}$HOME/go/bin/worrelld${RESET} (${CYAN}${version}${RESET})
+- binary: ${CYAN}${worrelld_bin:-$HOME/go/bin/worrelld}${RESET} (${CYAN}${version}${RESET})
 - node directory: ${CYAN}${WORRELL_HOME}${RESET}"
 }
 
@@ -180,7 +180,28 @@ install_node() {
 }
 
 cosmovisor_active() {
-    sudo systemctl cat "$WORRELL_SERVICE_NAME" 2>/dev/null | grep -qE "ExecStart=.*cosmovisor[[:space:]]+run"
+    local unit="/etc/systemd/system/${WORRELL_SERVICE_NAME}.service"
+    if [ -r "$unit" ]; then
+        grep -qE "^ExecStart=.*cosmovisor[[:space:]]+run" "$unit"
+    else
+        sudo systemctl cat "$WORRELL_SERVICE_NAME" 2>/dev/null | grep -qE "ExecStart=.*cosmovisor[[:space:]]+run"
+    fi
+}
+
+worrell_bin() {
+    if cosmovisor_active && [ -x "$WORRELL_HOME/cosmovisor/current/bin/worrelld" ]; then
+        printf '%s\n' "$WORRELL_HOME/cosmovisor/current/bin/worrelld"
+    elif [ -x "$HOME/go/bin/worrelld" ]; then
+        printf '%s\n' "$HOME/go/bin/worrelld"
+    else
+        command -v worrelld
+    fi
+}
+
+worrell() {
+    local bin
+    bin=$(worrell_bin) || { echo -e "${RED}worrelld is not installed.${RESET}" >&2; return 1; }
+    "$bin" "$@"
 }
 
 show_cosmovisor_status() {
@@ -277,19 +298,19 @@ set_peers() {
 
 list_or_create_key() {
     local action name
-    command -v worrelld >/dev/null 2>&1 || { echo -e "${RED}worrelld is not installed.${RESET}"; prompt_back; menu; return; }
+    worrell_bin >/dev/null 2>&1 || { echo -e "${RED}worrelld is not installed.${RESET}"; prompt_back; menu; return; }
     echo "1. List keys"; echo "2. Create a key"; echo "3. Recover a key from mnemonic"; echo "4. Back"
     read -r -p "Choose: " action
     case "$action" in
-        1) worrelld keys list --home "$WORRELL_HOME"; prompt_back ;;
-        2) read -r -p "Key name: " name; worrelld keys add "$name" --home "$WORRELL_HOME" ;;
-        3) read -r -p "Key name: " name; worrelld keys add "$name" --recover --home "$WORRELL_HOME" ;;
+        1) worrell keys list --home "$WORRELL_HOME"; prompt_back ;;
+        2) read -r -p "Key name: " name; worrell keys add "$name" --home "$WORRELL_HOME" ;;
+        3) read -r -p "Key name: " name; worrell keys add "$name" --recover --home "$WORRELL_HOME" ;;
         *) menu; return ;;
     esac
     menu
 }
 
-show_pubkey() { worrelld tendermint show-validator --home "$WORRELL_HOME"; prompt_back; menu; }
+show_pubkey() { worrell tendermint show-validator --home "$WORRELL_HOME"; prompt_back; menu; }
 
 valid_uint() { [[ "$1" =~ ^[0-9]+$ ]] && [ "$1" -gt 0 ]; }
 valid_fraction() { awk -v value="$1" 'BEGIN { exit !(value ~ /^[0-9]+([.][0-9]+)?$/ && value >= 0 && value <= 1) }'; }
@@ -303,8 +324,8 @@ validate_validator_inputs() {
 query_balance() {
     local name address
     read -r -p "Key name or worrell address: " name
-    if [[ "$name" == worrell1* ]]; then address="$name"; else address=$(worrelld keys show "$name" -a --home "$WORRELL_HOME"); fi
-    worrelld query bank balances "$address" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" || true
+    if [[ "$name" == worrell1* ]]; then address="$name"; else address=$(worrell keys show "$name" -a --home "$WORRELL_HOME"); fi
+    worrell query bank balances "$address" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" || true
     prompt_back
     menu
 }
@@ -314,9 +335,9 @@ create_validator() {
     sync=$(local_status | jq -r '.result.sync_info.catching_up // "unknown"' 2>/dev/null || echo unknown)
     [ "$sync" = false ] || { echo -e "${RED}Node is not confirmed synced (catching_up=$sync). Wait, then retry.${RESET}"; prompt_back; menu; return; }
     read -r -p "Key name: " name
-    worrelld keys show "$name" -a --home "$WORRELL_HOME" >/dev/null
+    worrell keys show "$name" -a --home "$WORRELL_HOME" >/dev/null
     echo -e "${YELLOW}Current account balance:${RESET}"
-    worrelld query bank balances "$(worrelld keys show "$name" -a --home "$WORRELL_HOME")" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" || true
+    worrell query bank balances "$(worrell keys show "$name" -a --home "$WORRELL_HOME")" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" || true
     read -r -p "Validator moniker [Worrel-Grand-Valley]: " moniker; moniker=${moniker:-Worrel-Grand-Valley}
     read -r -p "Self-delegation amount in uworrell [20000000000000]: " amount; amount=${amount:-20000000000000}
     read -r -p "Commission rate [0.05]: " rate; rate=${rate:-0.05}
@@ -330,11 +351,11 @@ create_validator() {
         return
     fi
     tmp=$(mktemp)
-    jq -n --arg pubkey "$(worrelld tendermint show-validator --home "$WORRELL_HOME")" --arg amount "$amount" --arg moniker "$moniker" --arg rate "$rate" --arg max_rate "$max_rate" --arg max_change "$max_change" --arg min_self "$min_self" '{pubkey:($pubkey|fromjson),amount:$amount,moniker:$moniker,identity:"",website:"",security:"",details:"Worrell testnet validator", "commission-rate":$rate,"commission-max-rate":$max_rate,"commission-max-change-rate":$max_change,"min-self-delegation":$min_self}' > "$tmp"
+    jq -n --arg pubkey "$(worrell tendermint show-validator --home "$WORRELL_HOME")" --arg amount "$amount" --arg moniker "$moniker" --arg rate "$rate" --arg max_rate "$max_rate" --arg max_change "$max_change" --arg min_self "$min_self" '{pubkey:($pubkey|fromjson),amount:$amount,moniker:$moniker,identity:"",website:"",security:"",details:"Worrell testnet validator", "commission-rate":$rate,"commission-max-rate":$max_rate,"commission-max-change-rate":$max_change,"min-self-delegation":$min_self}' > "$tmp"
     echo -e "${YELLOW}Review validator JSON:${RESET}"; cat "$tmp"
     read -r -p "Submit on-chain create-validator transaction? (yes/no): " answer
     if [[ "${answer,,}" == yes ]]; then
-        worrelld tx staking create-validator "$tmp" --from "$name" --chain-id "$WORRELL_CHAIN_ID" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes
+        worrell tx staking create-validator "$tmp" --from "$name" --chain-id "$WORRELL_CHAIN_ID" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes
     fi
     rm -f "$tmp"
     menu
@@ -344,14 +365,14 @@ unjail() {
     local name answer
     read -r -p "Key name: " name
     read -r -p "Submit unjail transaction? (yes/no): " answer
-    if [[ "${answer,,}" == yes ]]; then worrelld tx slashing unjail --from "$name" --chain-id "$WORRELL_CHAIN_ID" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes; fi
+    if [[ "${answer,,}" == yes ]]; then worrell tx slashing unjail --from "$name" --chain-id "$WORRELL_CHAIN_ID" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes; fi
     menu
 }
 
 query_validator_status() {
     local address
     read -r -p "Valoper address (worrellvaloper1...): " address
-    worrelld query staking validator "$address" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" || true
+    worrell query staking validator "$address" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" || true
     prompt_back
     menu
 }
@@ -457,7 +478,7 @@ menu() {
     echo -e "${YELLOW}Reminder: source ~/.bash_profile after installation.${RESET}"
     echo "Let's Buidl Worrel Together - Grand Valley"
     read -r -p "Choose an option (e.g., 1a or 1 then a): " option
-    if [[ "$option" =~ ^[1-3][a-f]$ ]]; then main=${option:0:1}; sub=${option:1:1}; else main=$option; sub=""; fi
+    if [[ "$option" =~ ^[1-3][a-z]$ ]]; then main=${option:0:1}; sub=${option:1:1}; else main=$option; sub=""; fi
     if [[ "$main" =~ ^[1-3]$ && -z "$sub" ]]; then read -r -p "Choose a sub-option: " sub; fi
     case "$main" in
         1)

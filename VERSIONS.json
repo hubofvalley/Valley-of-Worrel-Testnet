@@ -44,7 +44,11 @@
           "daemon_name": "worrelld",
           "daemon_home": "$HOME/.worrell",
           "automatic_downloads": false,
-          "backup_dir": "$HOME/.worrell/cosmovisor/backup"
+          "backup_dir": "$HOME/.worrell/cosmovisor/backup",
+          "archive_sha256": {
+            "cosmovisor-v1.7.3-linux-amd64.tar.gz": "3df6ef38cf976b00d226f391dc6866b8dc4040fc2f1b4a780d248f6e1cc9332e",
+            "cosmovisor-v1.7.3-linux-arm64.tar.gz": "ff27992e1356fbcb858a604455ad28a9727415c3e35b947a4fdb30d8f91295cd"
+          }
         }
       },
       "services": {

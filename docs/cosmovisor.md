@@ -19,7 +19,7 @@ Automatic binary downloads remain disabled. This is intentional for validator sa
 3. Select `1. Migrate current node to Cosmovisor`.
 4. Confirm the service is active and inspect `sudo journalctl -u worrelld -fn 100`.
 
-Migration stops the service briefly, preserves node data and `data/upgrade-info.json`, backs up the previous service unit, and restarts the service only if it was active before migration.
+Migration stops the service briefly, preserves node data and `data/upgrade-info.json`, backs up the previous service unit and shell profile, preserves the prior active/enabled state, and restarts the service only if it was active before migration. It refuses to migrate while a pending `data/upgrade-info.json` exists.
 
 ## Stage an upgrade binary
 
@@ -29,7 +29,7 @@ Select `Manage Cosmovisor` -> `Stage a verified upgrade binary`, then enter:
 - the exact governance upgrade plan name;
 - an emergency upgrade height only when explicitly coordinated.
 
-The helper downloads the architecture-specific release, verifies the upstream `release_checksum`, and calls `cosmovisor add-upgrade`. It does not restart the service. For governance upgrades, the plan name must match the on-chain name exactly. Never enable automatic binary downloads on a validator.
+The helper downloads the architecture-specific release, verifies both the upstream `release_checksum` and Valley's pinned archive hash, and calls `cosmovisor add-upgrade`. Governance plan names may contain spaces; the helper does not impose a narrower SDK-incompatible grammar. It does not restart the service. For governance upgrades, the plan name must match the on-chain name exactly. Never enable automatic binary downloads on a validator.
 
 ## Layout and environment
 

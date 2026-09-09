@@ -14,14 +14,30 @@ readonly BINARY_DIR="$HOME/go/bin"
 readonly SERVICE="${WORRELL_SERVICE_NAME:-worrelld}"
 readonly COSMOVISOR_BIN="${COSMOVISOR_BIN:-$BINARY_DIR/cosmovisor}"
 
+valid_upgrade_name() {
+    [ -n "$1" ] || return 1
+    case "$1" in *$'\n'*|*$'\r'*) return 1 ;; esac
+}
+
+valid_upgrade_height() {
+    [ -n "$1" ] && [[ "$1" =~ ^[0-9]+$ ]] && [ "$1" -gt 0 ]
+}
+
+preflight_emergency_upgrade() {
+    local home="$1" name="$2" target_dir
+    target_dir="$home/cosmovisor/upgrades/${name,,}"
+    [ ! -e "$target_dir" ] || return 1
+    [ ! -e "$home/data/upgrade-info.json" ] || return 1
+}
+
 [ -x "$COSMOVISOR_BIN" ] || { echo -e "${RED}Cosmovisor is not installed.${RESET}" >&2; exit 1; }
 [ -d "$HOME_DIR/cosmovisor" ] || { echo -e "${RED}Cosmovisor is not initialized for $HOME_DIR.${RESET}" >&2; exit 1; }
 [ -n "$VERSION" ] || read -r -p "Worrell release version (for example v0.1.2): " VERSION
 [ -n "$UPGRADE_NAME" ] || read -r -p "On-chain upgrade name: " UPGRADE_NAME
 [[ "$VERSION" =~ ^v[0-9A-Za-z._-]+$ ]] || { echo -e "${RED}Invalid release version.${RESET}" >&2; exit 1; }
-[[ "$UPGRADE_NAME" =~ ^[A-Za-z0-9._-]+$ ]] || { echo -e "${RED}Invalid upgrade name.${RESET}" >&2; exit 1; }
+valid_upgrade_name "$UPGRADE_NAME" || { echo -e "${RED}Upgrade name cannot be empty or contain a newline.${RESET}" >&2; exit 1; }
 if [ -n "$UPGRADE_HEIGHT" ]; then
-    [[ "$UPGRADE_HEIGHT" =~ ^[0-9]+$ ]] && [ "$UPGRADE_HEIGHT" -gt 0 ] || { echo -e "${RED}Upgrade height must be a positive integer.${RESET}" >&2; exit 1; }
+    valid_upgrade_height "$UPGRADE_HEIGHT" || { echo -e "${RED}Upgrade height must be a positive integer.${RESET}" >&2; exit 1; }
 fi
 
 case "$(uname -m)" in
@@ -47,6 +63,10 @@ export DAEMON_ALLOW_DOWNLOAD_BINARIES=false
 export DAEMON_RESTART_AFTER_UPGRADE=true
 export DAEMON_DATA_BACKUP_DIR="$HOME_DIR/cosmovisor/backup"
 export UNSAFE_SKIP_BACKUP=false
+
+if [ -n "$UPGRADE_HEIGHT" ]; then
+    preflight_emergency_upgrade "$HOME_DIR" "$UPGRADE_NAME" || { echo -e "${RED}Emergency staging conflicts with an existing upgrade directory or upgrade-info.json; refusing mutation.${RESET}" >&2; exit 1; }
+fi
 
 args=(add-upgrade "$UPGRADE_NAME" "$workdir/worrelld")
 [ -z "$UPGRADE_HEIGHT" ] || args+=(--upgrade-height "$UPGRADE_HEIGHT")

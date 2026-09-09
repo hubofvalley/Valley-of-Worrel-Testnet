@@ -19,6 +19,8 @@ m=$(sha256sum "$migration" | awk '{print $1}')
 x=$(sha256sum "$upgrade" | awk '{print $1}')
 grep -q "VALLEY_INSTALLER_SHA256=\"$a\"" "$menu"
 grep -q "VALLEY_UPDATER_SHA256=\"$u\"" "$menu"
+grep -q "VALLEY_COSMOVISOR_MIGRATION_SHA256=\"$m\"" "$menu"
+grep -q "VALLEY_COSMOVISOR_UPGRADE_SHA256=\"$x\"" "$menu"
 grep -q '10#\$1 >= 10' "$installer"
 grep -q '10#\$1 <= 64' "$installer"
 grep -q 'cd "$workdir"' "$installer"
