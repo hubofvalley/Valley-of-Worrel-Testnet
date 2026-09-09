@@ -76,7 +76,7 @@ rewrite(os.environ["CONFIG"], {
     "": {"proxy_app": f'"tcp://127.0.0.1:{os.environ["ABCI_PORT"]}"'},
     "p2p": {"laddr": f'"tcp://0.0.0.0:{os.environ["P2P_PORT"]}"'},
     "rpc": {"laddr": f'"tcp://127.0.0.1:{os.environ["RPC_PORT"]}"'},
-    "instrumentation": {"prometheus_listen_addr": f'":{os.environ["PROM_PORT"]}"'},
+    "instrumentation": {"prometheus_listen_addr": f'"127.0.0.1:{os.environ["PROM_PORT"]}"'},
 })
 rewrite(os.environ["APP"], {
     "api": {"address": f'"tcp://127.0.0.1:{os.environ["API_PORT"]}"'},

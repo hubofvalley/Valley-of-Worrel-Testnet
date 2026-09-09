@@ -28,7 +28,7 @@ HOME="$fixture" WORRELL_HOME="$fixture/.worrell" bash -c 'source "$HOME/function
 grep -q 'proxy_app = "tcp://127.0.0.1:38658"' "$fixture/.worrell/config/config.toml"
 grep -q 'laddr = "tcp://0.0.0.0:38656"' "$fixture/.worrell/config/config.toml"
 grep -q 'laddr = "tcp://127.0.0.1:38657"' "$fixture/.worrell/config/config.toml"
-grep -q 'prometheus_listen_addr = ":38660"' "$fixture/.worrell/config/config.toml"
+grep -q 'prometheus_listen_addr = "127.0.0.1:38660"' "$fixture/.worrell/config/config.toml"
 grep -q 'address = "tcp://127.0.0.1:38317"' "$fixture/.worrell/config/app.toml"
 grep -q 'address = "localhost:38090"' "$fixture/.worrell/config/app.toml"
 grep -q 'address = "127.0.0.1:38091"' "$fixture/.worrell/config/app.toml"

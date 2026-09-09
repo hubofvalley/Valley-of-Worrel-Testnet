@@ -14,7 +14,7 @@ WORRELL_TARGET_VERSION=${WORRELL_TARGET_VERSION:-v0.1.2}
 WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://worrel-testnet-rpc.oshvank.xyz}
 WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
-readonly VALLEY_INSTALLER_SHA256="dc09ef442d4fa26e02ba7990f25024414144ef76a36ba2c6686184400d5074bd"
+readonly VALLEY_INSTALLER_SHA256="60d1645693e10f65846bb56c01ffed643ba15db22b5c4024bc4cc95143b8aef5"
 readonly VALLEY_UPDATER_SHA256="07ceef513c3acc65c6a4efa6540f92bf037ce66b16d524f424ca2c07e55a1b70"
 readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/7048848/resources"
 
@@ -237,9 +237,9 @@ valid_uint() { [[ "$1" =~ ^[0-9]+$ ]] && [ "$1" -gt 0 ]; }
 valid_fraction() { awk -v value="$1" 'BEGIN { exit !(value ~ /^[0-9]+([.][0-9]+)?$/ && value >= 0 && value <= 1) }'; }
 validate_validator_inputs() {
     valid_uint "$amount" && valid_uint "$min_self" || return 1
-    [ "$amount" -ge "$min_self" ] || return 1
+    [ "$min_self" -ge 1000000 ] && [ "$amount" -ge "$min_self" ] || return 1
     valid_fraction "$rate" && valid_fraction "$max_rate" && valid_fraction "$max_change" || return 1
-    awk -v rate="$rate" -v max_rate="$max_rate" -v max_change="$max_change" 'BEGIN { exit !(rate >= 0.05 && max_rate >= rate && max_change >= 0 && max_change <= 1) }'
+    awk -v rate="$rate" -v max_rate="$max_rate" -v max_change="$max_change" 'BEGIN { exit !(rate >= 0.05 && max_rate >= rate && max_change >= 0 && max_change <= max_rate) }'
 }
 
 query_balance() {
@@ -390,7 +390,7 @@ menu() {
     echo "   a. Restart node"
     echo "   b. Stop node"
     echo "   c. Delete node (backup first)"
-    echo "   d. Backup node home"
+    echo "   d. Backup validator/node keys"
     echo "4. Show Endpoints & Useful Links"
     echo "5. Show Guidelines"
     echo -e "${RED}6. Exit${RESET}"
