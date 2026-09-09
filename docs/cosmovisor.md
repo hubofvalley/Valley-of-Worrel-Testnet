@@ -7,8 +7,10 @@ Worrell's application includes the Cosmos SDK `x/upgrade` module and prioritises
 The Valley installer installs the pinned Cosmovisor release, initialises the current `worrelld` binary under `~/.worrell/cosmovisor/genesis/bin/`, and runs the service as:
 
 ```text
-cosmovisor run start --home ~/.worrell --chain-id worrell-testnet-1
+cosmovisor run start --home ~/.worrell
 ```
+
+The chain ID is stored during node initialization. Worrell v0.1.2 rejects `--chain-id` on `start`, so the service intentionally passes only `--home` to the application.
 
 Automatic binary downloads remain disabled. This is intentional for validator safety.
 

@@ -68,7 +68,7 @@ Set `minimum-gas-prices = "0.025uworrell"` in `app.toml`. Valley can remap local
 ## Start and sync
 
 ```bash
-worrelld start --home "$WORRELL_HOME" --chain-id worrell-testnet-1
+worrelld start --home "$WORRELL_HOME"
 worrelld status --home "$WORRELL_HOME" 2>&1 | jq '.sync_info'
 ```
 
