@@ -128,10 +128,10 @@ install_from_source() {
 }
 
 install_cosmovisor() {
-    local artifact workdir
+    local artifact workdir expected
     case "$(uname -m)" in
-        x86_64|amd64) artifact="cosmovisor-${COSMOVISOR_VERSION}-linux-amd64.tar.gz" ;;
-        aarch64|arm64) artifact="cosmovisor-${COSMOVISOR_VERSION}-linux-arm64.tar.gz" ;;
+        x86_64|amd64) artifact="cosmovisor-${COSMOVISOR_VERSION}-linux-amd64.tar.gz"; expected="3df6ef38cf976b00d226f391dc6866b8dc4040fc2f1b4a780d248f6e1cc9332e" ;;
+        aarch64|arm64) artifact="cosmovisor-${COSMOVISOR_VERSION}-linux-arm64.tar.gz"; expected="ff27992e1356fbcb858a604455ad28a9727415c3e35b947a4fdb30d8f91295cd" ;;
         *) echo -e "${RED}Unsupported architecture for Cosmovisor.${RESET}" >&2; return 1 ;;
     esac
     workdir=$(mktemp -d)
@@ -142,6 +142,7 @@ install_cosmovisor() {
         cd "$workdir"
         grep -E "^[0-9a-fA-F]{64}[[:space:]]+${artifact//./\.}$" SHA256SUMS | sha256sum -c -
     )
+    echo "$expected  $workdir/$artifact" | sha256sum -c -
     tar -xzf "$workdir/$artifact" -C "$workdir"
     install -Dm755 "$workdir/cosmovisor" "$COSMOVISOR_BIN"
     [ -x "$COSMOVISOR_BIN" ] || { echo -e "${RED}Cosmovisor installation failed.${RESET}" >&2; return 1; }
