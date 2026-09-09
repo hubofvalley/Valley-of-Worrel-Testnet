@@ -12,6 +12,8 @@ readonly WORRELL_VERSION="${WORRELL_TARGET_VERSION:-v0.1.2}"
 readonly CHAIN_ID="worrell-testnet-1"
 readonly HOME_DIR="${WORRELL_HOME:-$HOME/.worrell}"
 readonly BINARY_DIR="$HOME/go/bin"
+readonly COSMOVISOR_VERSION="${WORRELL_COSMOVISOR_VERSION:-v1.7.3}"
+readonly COSMOVISOR_BIN="$BINARY_DIR/cosmovisor"
 readonly GENESIS_URL="https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-1/genesis.json"
 readonly GENESIS_SHA256="a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd"
 readonly PEERS="bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656"
@@ -125,6 +127,26 @@ install_from_source() {
     [ -x "$HOME/go/bin/worrelld" ]
 }
 
+install_cosmovisor() {
+    local artifact workdir
+    case "$(uname -m)" in
+        x86_64|amd64) artifact="cosmovisor-${COSMOVISOR_VERSION}-linux-amd64.tar.gz" ;;
+        aarch64|arm64) artifact="cosmovisor-${COSMOVISOR_VERSION}-linux-arm64.tar.gz" ;;
+        *) echo -e "${RED}Unsupported architecture for Cosmovisor.${RESET}" >&2; return 1 ;;
+    esac
+    workdir=$(mktemp -d)
+    trap 'rm -rf "$workdir"' RETURN
+    curl -fsSL "https://github.com/cosmos/cosmos-sdk/releases/download/cosmovisor/${COSMOVISOR_VERSION}/${artifact}" -o "$workdir/$artifact"
+    curl -fsSL "https://github.com/cosmos/cosmos-sdk/releases/download/cosmovisor/${COSMOVISOR_VERSION}/SHA256SUMS-cosmovisor-${COSMOVISOR_VERSION}.txt" -o "$workdir/SHA256SUMS"
+    (
+        cd "$workdir"
+        grep -E "^[0-9a-fA-F]{64}[[:space:]]+${artifact//./\.}$" SHA256SUMS | sha256sum -c -
+    )
+    tar -xzf "$workdir/$artifact" -C "$workdir"
+    install -Dm755 "$workdir/cosmovisor" "$COSMOVISOR_BIN"
+    [ -x "$COSMOVISOR_BIN" ] || { echo -e "${RED}Cosmovisor installation failed.${RESET}" >&2; return 1; }
+}
+
 read -r -p "Enter node moniker [Worrel-Grand-Valley]: " MONIKER
 MONIKER=${MONIKER:-Worrel-Grand-Valley}
 while true; do
@@ -178,6 +200,15 @@ worrelld genesis validate-genesis --home "$HOME_DIR"
 remap_config "$PORT_PREFIX"
 sed -i -E "s|^[[:space:]]*persistent_peers[[:space:]]*=.*|persistent_peers = \"${PEERS}\"|" "$HOME_DIR/config/config.toml"
 
+# Worrell wires the Cosmos SDK x/upgrade module, so run the daemon through
+# Cosmovisor. Automatic binary downloads stay disabled; operators stage and
+# review upgrade binaries locally before an upgrade height.
+export DAEMON_NAME=worrelld
+export DAEMON_HOME="$HOME_DIR"
+install_cosmovisor
+cosmovisor init "$BINARY_DIR/worrelld"
+mkdir -p "$HOME_DIR/cosmovisor/upgrades" "$HOME_DIR/cosmovisor/backup"
+
 sudo tee "/etc/systemd/system/${WORRELL_SERVICE_NAME}.service" >/dev/null <<EOF
 [Unit]
 Description=Worrell Testnet node
@@ -189,10 +220,16 @@ Type=simple
 User=$USER
 Group=$(id -gn)
 WorkingDirectory=$HOME_DIR
-ExecStart=$BINARY_DIR/worrelld start --home $HOME_DIR --chain-id $CHAIN_ID
+ExecStart=$COSMOVISOR_BIN run start --home $HOME_DIR --chain-id $CHAIN_ID
 Restart=on-failure
 RestartSec=3
 LimitNOFILE=65536
+Environment="DAEMON_NAME=worrelld"
+Environment="DAEMON_HOME=$HOME_DIR"
+Environment="DAEMON_ALLOW_DOWNLOAD_BINARIES=false"
+Environment="DAEMON_RESTART_AFTER_UPGRADE=true"
+Environment="DAEMON_DATA_BACKUP_DIR=$HOME_DIR/cosmovisor/backup"
+Environment="UNSAFE_SKIP_BACKUP=false"
 
 [Install]
 WantedBy=multi-user.target
@@ -214,5 +251,6 @@ else
 fi
 echo -e "${CYAN}Home:${RESET} $HOME_DIR"
 echo -e "${CYAN}RPC:${RESET} http://127.0.0.1:${PORT_PREFIX}657"
+echo -e "${CYAN}Cosmovisor:${RESET} $COSMOVISOR_BIN ${COSMOVISOR_VERSION}"
 echo -e "${CYAN}Logs:${RESET} sudo journalctl -u ${WORRELL_SERVICE_NAME} -fn 100"
 echo -e "${YELLOW}Reload saved variables with: source ~/.bash_profile${RESET}"

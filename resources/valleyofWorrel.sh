@@ -14,8 +14,10 @@ WORRELL_TARGET_VERSION=${WORRELL_TARGET_VERSION:-v0.1.2}
 WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://worrel-testnet-rpc.oshvank.xyz}
 WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
-readonly VALLEY_INSTALLER_SHA256="60d1645693e10f65846bb56c01ffed643ba15db22b5c4024bc4cc95143b8aef5"
+readonly VALLEY_INSTALLER_SHA256="6ddc5c07f4df2f03a489f752d149afac7b0e04621fea1889539b5e8d3a841424"
 readonly VALLEY_UPDATER_SHA256="07ceef513c3acc65c6a4efa6540f92bf037ce66b16d524f424ca2c07e55a1b70"
+readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="918eb5092d414435dcdccaa36529ece8551d8c063b7548695aed2054faaa9db4"
+readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="07715cb8bc5d8e059d9dc0eba534da0284af43c5ce8a7d5dd6d86778cc5c27ac"
 readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/ee2d1c609d41df9635aa40acb21e96f25b06e2dd/resources"
 
 LOGO=''
@@ -82,10 +84,13 @@ network_height() { network_status | jq -r '.result.sync_info.latest_block_height
 
 run_pinned_child() {
     local script="$1" expected="$2" path tmp actual rc
+    shift 2
     tmp=""
     case "$script" in
         worrelld_node_install_testnet.sh) expected="$VALLEY_INSTALLER_SHA256" ;;
         worrelld_update.sh) expected="$VALLEY_UPDATER_SHA256" ;;
+        cosmovisor_migration.sh) expected="$VALLEY_COSMOVISOR_MIGRATION_SHA256" ;;
+        worrelld_cosmovisor_upgrade.sh) expected="$VALLEY_COSMOVISOR_UPGRADE_SHA256" ;;
         *) echo -e "${RED}Unknown child script. Refusing execution.${RESET}" >&2; return 1 ;;
     esac
     path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$script"
@@ -101,7 +106,7 @@ run_pinned_child() {
         echo "Observed: $actual" >&2
         return 1
     fi
-    bash "$path"
+    bash "$path" "$@"
     rc=$?
     [ -z "$tmp" ] || rm -rf "$tmp"
     return "$rc"
@@ -174,7 +179,60 @@ install_node() {
     menu
 }
 
+cosmovisor_active() {
+    sudo systemctl cat "$WORRELL_SERVICE_NAME" 2>/dev/null | grep -qE "ExecStart=.*cosmovisor[[:space:]]+run"
+}
+
+show_cosmovisor_status() {
+    echo -e "${GREEN}Cosmovisor status${RESET}"
+    if ! command -v cosmovisor >/dev/null 2>&1; then
+        echo -e "${YELLOW}Cosmovisor is not installed.${RESET}"
+    else
+        cosmovisor version || true
+    fi
+    echo "DAEMON_NAME=${DAEMON_NAME:-worrelld}"
+    echo "DAEMON_HOME=${DAEMON_HOME:-$WORRELL_HOME}"
+    echo "Cosmovisor home: $WORRELL_HOME/cosmovisor"
+    if [ -L "$WORRELL_HOME/cosmovisor/current" ]; then
+        echo "Current binary: $(readlink -f "$WORRELL_HOME/cosmovisor/current/bin/worrelld" 2>/dev/null || echo unavailable)"
+    else
+        echo "Current binary: not initialized"
+    fi
+    prompt_back
+    menu
+}
+
+manage_cosmovisor() {
+    echo -e "${ORANGE}Manage Cosmovisor${RESET}"
+    echo "1. Migrate current node to Cosmovisor"
+    echo "2. Show Cosmovisor status"
+    echo "3. Stage a verified upgrade binary"
+    echo "4. Back"
+    read -r -p "Choose an option (1-4): " choice
+    case "$choice" in
+        1) run_pinned_child cosmovisor_migration.sh "$VALLEY_COSMOVISOR_MIGRATION_SHA256"; menu ;;
+        2) show_cosmovisor_status ;;
+        3)
+            if ! cosmovisor_active; then
+                echo -e "${RED}Migrate the node to Cosmovisor first.${RESET}"; prompt_back; menu; return
+            fi
+            read -r -p "Release version (for example v0.1.2): " version
+            read -r -p "On-chain upgrade name: " upgrade_name
+            read -r -p "Emergency upgrade height (leave empty for governance plan): " upgrade_height
+            run_pinned_child worrelld_cosmovisor_upgrade.sh "$VALLEY_COSMOVISOR_UPGRADE_SHA256" "$version" "$upgrade_name" "$upgrade_height"
+            menu
+            ;;
+        4) menu ;;
+        *) echo -e "${RED}Invalid option.${RESET}"; menu ;;
+    esac
+}
+
 update_node() {
+    if cosmovisor_active; then
+        echo -e "${YELLOW}Cosmovisor is active. Use Manage Cosmovisor to stage an upgrade binary; direct replacement is disabled.${RESET}"
+        manage_cosmovisor
+        return
+    fi
     echo -e "${YELLOW}Updates the local worrelld binary after release checksum verification and briefly restarts the service.${RESET}"
     read -r -p "Proceed? (yes/no): " answer
     if [[ "${answer,,}" == yes ]]; then run_pinned_child worrelld_update.sh "$VALLEY_UPDATER_SHA256"; fi
@@ -352,7 +410,8 @@ delete_node() {
 show_guidelines() {
     echo -e "${GREEN}Guidelines${RESET}"
     echo "- 1a installs/redeploys; existing data is moved to a timestamped backup."
-    echo "- 1b updates the binary with release checksum verification."
+    echo "- 1b updates the binary with release checksum verification; Cosmovisor nodes use 1g."
+    echo "- 1g manages Cosmovisor: migration, status, and verified upgrade staging."
     echo "- 1c compares local/public heights; wait for catching_up=false before staking."
     echo "- 1d follows service logs; press Ctrl+C to return."
     echo "- 1e restores official peers or sets them manually."
@@ -380,6 +439,7 @@ menu() {
     echo "   d. Follow node logs"
     echo "   e. Configure persistent peers"
     echo "   f. Query account balance"
+    echo "   g. Manage Cosmovisor"
     echo -e "${GREEN}2. Validator/Key Interactions${RESET}"
     echo "   a. Create / recover / list keys"
     echo "   b. Show consensus public key"
@@ -408,6 +468,7 @@ menu() {
                 d) show_logs ;;
                 e) set_peers ;;
                 f) query_balance ;;
+                g) manage_cosmovisor ;;
                 *) menu ;;
             esac
             ;;

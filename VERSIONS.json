@@ -36,7 +36,16 @@
         "release_checksum_url": "https://github.com/worrellchain/worrell/releases/download/v0.1.2/release_checksum",
         "install_source": "resources/worrelld_node_install_testnet.sh",
         "update_source": "resources/worrelld_update.sh",
-        "needs_live_verification": true
+        "needs_live_verification": true,
+        "cosmovisor": {
+          "version": "v1.7.3",
+          "release_repo": "https://github.com/cosmos/cosmos-sdk",
+          "release_tag": "cosmovisor/v1.7.3",
+          "daemon_name": "worrelld",
+          "daemon_home": "$HOME/.worrell",
+          "automatic_downloads": false,
+          "backup_dir": "$HOME/.worrell/cosmovisor/backup"
+        }
       },
       "services": {
         "consensus": "worrelld"
