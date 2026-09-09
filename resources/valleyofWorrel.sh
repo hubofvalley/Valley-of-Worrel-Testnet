@@ -18,7 +18,7 @@ readonly VALLEY_INSTALLER_SHA256="6ddc5c07f4df2f03a489f752d149afac7b0e04621fea18
 readonly VALLEY_UPDATER_SHA256="07ceef513c3acc65c6a4efa6540f92bf037ce66b16d524f424ca2c07e55a1b70"
 readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="918eb5092d414435dcdccaa36529ece8551d8c063b7548695aed2054faaa9db4"
 readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="07715cb8bc5d8e059d9dc0eba534da0284af43c5ce8a7d5dd6d86778cc5c27ac"
-readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/ee2d1c609d41df9635aa40acb21e96f25b06e2dd/resources"
+readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/693424d72619d157bdbab8145c9b8ed5e42249c1/resources"
 
 LOGO=''
 LOGO+=' __      __                    _ _               _\n'
