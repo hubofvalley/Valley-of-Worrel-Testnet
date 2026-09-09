@@ -16,7 +16,7 @@ Run as the node OS user. Do not use `sudo bash`; the scripts request sudo only f
 
 | Option | Behaviour | Risk |
 |---|---|---|
-| `1a` | Deploys or redeploys the node through the audited installer. Backs up an existing `~/.worrell` before replacement. | High: replaces node data after confirmation. |
+| `1a` | Deploys or redeploys the node through the audited installer, then asks whether to run the service directly with `worrelld` or through pinned Cosmovisor. Backs up an existing `~/.worrell` before replacement. | High: replaces node data after confirmation. |
 | `1b` | Updates the pinned `worrelld` release after checksum verification when the node is using the direct systemd binary. Cosmovisor-managed nodes are routed to `1g`. | Medium: service restart/downtime. |
 | `1c` | Shows local and public heights, chain ID, catching-up state, and block difference. | Read-only. |
 | `1d` | Follows the selected service journal. | Read-only. |
@@ -62,16 +62,17 @@ Leaves the menu. If the installer saved variables, run `source ~/.bash_profile` 
 1. Review the installer and release checksum source.
 2. Run `1a` as a dedicated node OS user.
 3. Choose a two-digit port prefix from `10` through `64` if the default ports are occupied. Prefix `26` keeps consensus ports at 26656/26657/26658; API/gRPC/Prometheus are still remapped consistently.
-4. Wait for `catching_up: false` in `1c`.
-5. Use the official faucet manually if testnet funds are needed.
-6. Create a validator only after checking the consensus key, balance, amount, commission, and minimum self-delegation.
-7. Monitor logs and signing information continuously.
+4. Choose the install runtime when prompted: blank/`no` keeps the direct `worrelld` systemd service; `yes` installs pinned Cosmovisor with automatic downloads disabled. You can migrate a direct node later through `1g`.
+5. Wait for `catching_up: false` in `1c`.
+6. Use the official faucet manually if testnet funds are needed.
+7. Create a validator only after checking the consensus key, balance, amount, commission, and minimum self-delegation.
+8. Monitor logs and signing information continuously.
 
 ## Cosmovisor
 
-Worrell's application wires the Cosmos SDK `x/upgrade` module, so the node can be run through Cosmovisor. The installer configures Cosmovisor automatically for new deployments. Existing direct-binary nodes can use `1g` -> **Migrate current node to Cosmovisor**.
+Worrell's application wires the Cosmos SDK `x/upgrade` module, so the node can be run through Cosmovisor. During `1a`, choose the runtime explicitly: blank/`no` (the default) installs a direct `worrelld` service; `yes` installs and initialises pinned Cosmovisor. Existing direct-binary nodes can use `1g` -> **Migrate current node to Cosmovisor**.
 
-Automatic binary downloads are disabled. For a governance upgrade, stage the exact release and on-chain plan name with **Stage a verified upgrade binary**, then verify the prepared path and upgrade plan before the height. The optional emergency height is only for a coordinated local height-based upgrade and must be independently confirmed. The migration does not delete `data/upgrade-info.json` or node data.
+Cosmovisor is optional at install time. Selecting direct mode does not uninstall an existing Cosmovisor binary, and selecting Cosmovisor does not enable automatic downloads. For a governance upgrade, stage the exact release and on-chain plan name with **Stage a verified upgrade binary**, then verify the prepared path and upgrade plan before the height. The optional emergency height is only for a coordinated local height-based upgrade and must be independently confirmed. The migration does not delete `data/upgrade-info.json` or node data.
 
 Cosmovisor state is stored under `~/.worrell/cosmovisor/`:
 

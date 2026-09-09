@@ -53,7 +53,7 @@ Run it as the OS user that owns the node. Do not run the launcher with `sudo`.
 - Official genesis download and `worrelld genesis validate-genesis` gate.
 - Official persistent peers, configurable two-digit local port prefix, and optional UFW.
 - Idempotent systemd service installation with ownership and backup checks.
-- Cosmovisor-managed service using the Worrell `x/upgrade` module, with automatic binary downloads disabled and explicit verified upgrade staging.
+- Optional direct `worrelld` or Cosmovisor-managed service using the Worrell `x/upgrade` module, with automatic binary downloads disabled and explicit verified upgrade staging.
 - Read-only status, logs, peer management, key/balance helpers, validator creation, and unjail flow.
 - No snapshot automation: no official Worrell Testnet snapshot source was verified.
 - No automatic faucet or transaction signing: funds and signing remain operator-controlled.

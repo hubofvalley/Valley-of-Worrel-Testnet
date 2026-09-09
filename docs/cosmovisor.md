@@ -4,7 +4,15 @@ Worrell's application includes the Cosmos SDK `x/upgrade` module and prioritises
 
 ## New installation
 
-The Valley installer installs the pinned Cosmovisor release, initialises the current `worrelld` binary under `~/.worrell/cosmovisor/genesis/bin/`, and runs the service as:
+Cosmovisor is optional during `1a` installation. The prompt is:
+
+```text
+Install Cosmovisor for this deployment? (yes/no) [no]:
+```
+
+- blank, `no`, or `n`: install a direct `worrelld` systemd service; no Cosmovisor download or initialisation occurs;
+- `yes` or `y`: install the pinned Cosmovisor release, initialise `worrelld` under `~/.worrell/cosmovisor/genesis/bin/`, and run the service as:
+
 
 ```text
 cosmovisor run start --home ~/.worrell
@@ -12,7 +20,7 @@ cosmovisor run start --home ~/.worrell
 
 The chain ID is stored during node initialization. Worrell v0.1.2 rejects `--chain-id` on `start`, so the service intentionally passes only `--home` to the application.
 
-Automatic binary downloads remain disabled. This is intentional for validator safety.
+The default is direct mode. Selecting direct mode does not uninstall an existing Cosmovisor binary. Selecting Cosmovisor keeps automatic binary downloads disabled for validator safety. To change an existing direct node without rebuilding its home, use the migration flow below. Re-running `1a` is a redeployment: existing node data is moved to a timestamped backup.
 
 ## Existing node migration
 

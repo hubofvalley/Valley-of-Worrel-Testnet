@@ -14,24 +14,28 @@ WORRELL_TARGET_VERSION=${WORRELL_TARGET_VERSION:-v0.1.2}
 WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://worrel-testnet-rpc.oshvank.xyz}
 WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
-readonly VALLEY_INSTALLER_SHA256="e82df5a21bf03abc763fca89bc4b5a33831f6369248a2691e3d5adeb2f651305"
+readonly VALLEY_INSTALLER_SHA256="b08995459d0a219ac3457d78c843efcc331a368cf492704324d5a93cec38a7bc"
 readonly VALLEY_UPDATER_SHA256="07ceef513c3acc65c6a4efa6540f92bf037ce66b16d524f424ca2c07e55a1b70"
 readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="c37898ad62f0cd8b031cfc4a19b129473ab56a457cb2ca4a3d5da32fa6334d90"
 readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="68414d1792a1f5bde935a5a1e9c14660a881b185ed5b95a199a9a68bb76a72a7"
 readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/bf042c356521846253b6791c302161d81d2a107f/resources"
 
-LOGO=''
-LOGO+=' __      __                    _ _               _\n'
-LOGO+=' \ \    / /                   | | |             | |\n'
-LOGO+='  \ \  / /__  _ __ _ __ ___   | | |  ___  _ __  | |\n'
-LOGO+='   \ \/ / _ \|  __|  __/ _ \  | | | / _ \|  _ \ | |\n'
-LOGO+='    \  / (_) | |  | | | (_) | | | ||  __/| | | || |\n'
-LOGO+='     \/ \___/|_|  |_|  \___/  |_|_| \___||_| |_||_|\n'
-LOGO+='\n'
-LOGO+=' __      __              _ _   _   _             \n'
-LOGO+='/__ __ __ __|__ _ __ __ _| | | | | | |            \n'
-LOGO+='\_| | (_| | | | (_| | | (_| | | | | | |           \n'
-LOGO+='                  Grand Valley                 \n'
+LOGO=$(cat <<'EOF'
+ __        __                    _
+ \ \      / /__  _ __ _ __ ___| |
+  \ \ /\ / / _ \| '__| '__/ _ \ |
+   \ V  V / (_) | |  | | |  __/ |
+    \_/\_/ \___/|_|  |_|  \___|_|
+
+  ____                     _  __     __    _ _
+ / ___|_ __ __ _ _ __   __| | \ \   / /_ _| | | ___ _   _
+| |  _| '__/ _` | '_ \ / _` |  \ \ / / _` | | |/ _ \ | | |
+| |_| | | | (_| | | | | (_| |   \ V / (_| | | |  __/ |_| |
+ \____|_|  \__,_|_| |_|\__,_|    \_/ \__,_|_|_|\___|\__, |
+                                                      |___/
+                         Grand Valley
+EOF
+)
 
 PRIVACY_SAFETY_STATEMENT="
 ${YELLOW}Privacy and Safety Statement${RESET}
@@ -161,6 +165,7 @@ ${GREEN}Connect with Grand Valley:${RESET}
 prompt_back() { read -r -p "Press Enter to go back to main menu..."; }
 
 install_node() {
+    local service_mode answer
     clear
     echo -e "${RED}▓▒░ IMPORTANT DISCLAIMER AND TERMS ░▒▓${RESET}"
     echo -e "${YELLOW}SECURITY${RESET}: scripts stay local; audit source before running."
@@ -169,7 +174,18 @@ install_node() {
     echo -e "${YELLOW}VALIDATOR RESPONSIBILITIES${RESET}: keep uptime, protect keys, update safely, and avoid double-signing."
     read -r -p "Proceed with installation/redeployment? (yes/no): " answer
     if [[ "${answer,,}" != yes ]]; then echo -e "${RED}Installation cancelled.${RESET}"; menu; return; fi
-    run_pinned_child worrelld_node_install_testnet.sh "$VALLEY_INSTALLER_SHA256"
+    while true; do
+        echo -e "${CYAN}Runtime selection${RESET}"
+        echo "no  = direct worrelld service; you can migrate later via 1g."
+        echo "yes = pinned Cosmovisor service; automatic binary downloads remain disabled."
+        read -r -p "Install Cosmovisor for this deployment? (yes/no) [no]: " answer
+        case "${answer,,}" in
+            ""|no|n) service_mode=direct; break ;;
+            yes|y) service_mode=cosmovisor; break ;;
+            *) echo -e "${RED}Please answer yes or no.${RESET}" ;;
+        esac
+    done
+    run_pinned_child worrelld_node_install_testnet.sh "$VALLEY_INSTALLER_SHA256" --service-mode "$service_mode"
     # Refresh the one-time service/home settings saved by the child installer.
     # shellcheck disable=SC1091
     source "$HOME/.bash_profile" 2>/dev/null || true
@@ -180,11 +196,18 @@ install_node() {
 }
 
 cosmovisor_active() {
-    local unit="/etc/systemd/system/${WORRELL_SERVICE_NAME}.service"
-    if [ -r "$unit" ]; then
-        grep -qE "^ExecStart=.*cosmovisor[[:space:]]+run" "$unit"
+    [ "$(runtime_mode)" = cosmovisor ]
+}
+
+runtime_mode() {
+    local content
+    content=$(sudo systemctl show "$WORRELL_SERVICE_NAME" -p ExecStart --value 2>/dev/null || true)
+    if grep -qE '(^|[[:space:]])cosmovisor[[:space:]]+run[[:space:]]+start([[:space:]]|$)' <<< "$content"; then
+        printf '%s\n' cosmovisor
+    elif grep -qE '(^|[[:space:]]|/)worrelld[[:space:]]+start([[:space:]]|$)' <<< "$content"; then
+        printf '%s\n' direct
     else
-        sudo systemctl cat "$WORRELL_SERVICE_NAME" 2>/dev/null | grep -qE "ExecStart=.*cosmovisor[[:space:]]+run"
+        printf '%s\n' unknown
     fi
 }
 
@@ -249,9 +272,17 @@ manage_cosmovisor() {
 }
 
 update_node() {
-    if cosmovisor_active; then
+    local mode
+    mode=$(runtime_mode)
+    if [ "$mode" = cosmovisor ]; then
         echo -e "${YELLOW}Cosmovisor is active. Use Manage Cosmovisor to stage an upgrade binary; direct replacement is disabled.${RESET}"
         manage_cosmovisor
+        return
+    fi
+    if [ "$mode" = unknown ]; then
+        echo -e "${RED}Cannot identify the active service mode. Refusing direct binary replacement.${RESET}"
+        prompt_back
+        menu
         return
     fi
     echo -e "${YELLOW}Updates the local worrelld binary after release checksum verification and briefly restarts the service.${RESET}"
@@ -430,7 +461,7 @@ delete_node() {
 
 show_guidelines() {
     echo -e "${GREEN}Guidelines${RESET}"
-    echo "- 1a installs/redeploys; existing data is moved to a timestamped backup."
+    echo "- 1a installs/redeploys; choose direct worrelld or Cosmovisor. Existing data is moved to a timestamped backup."
     echo "- 1b updates the binary with release checksum verification; Cosmovisor nodes use 1g."
     echo "- 1g manages Cosmovisor: migration, status, and verified upgrade staging."
     echo "- 1c compares local/public heights; wait for catching_up=false before staking."
@@ -520,6 +551,10 @@ menu() {
 }
 
 echo -e "$LOGO"
+if [ ! -t 0 ]; then
+    echo -e "${RED}Interactive terminal required. Re-run this launcher from a TTY.${RESET}" >&2
+    exit 1
+fi
 echo -e "$PRIVACY_SAFETY_STATEMENT"
 read -r -p "Press Enter to continue..."
 show_intro
