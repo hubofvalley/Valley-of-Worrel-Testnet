@@ -10,6 +10,8 @@ upgrade="$repo/resources/worrelld_cosmovisor_upgrade.sh"
 
 bash -n "$menu" "$installer" "$updater" "$migration" "$upgrade"
 jq empty "$repo/VERSIONS.json"
+grep -q '^## Overview$' "$repo/README.md"
+grep -qi 'proof-of-stake blockchain' "$repo/README.md"
 ! grep -R -nE '\{\{[A-Za-z_]+\}\}|__[A-Z_]+__|<<<<<<<|=======|>>>>>>>' "$repo/resources"
 ! grep -R -n '\${NC}' "$repo/resources"
 

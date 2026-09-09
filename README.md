@@ -4,6 +4,14 @@ Interactive terminal toolkit by **Grand Valley** for deploying and managing a Wo
 
 > Official project spelling: **Worrell**. The Valley product name is **Valley of Worrel** to match the requested Grand Valley naming.
 
+## Overview
+
+**Valley of Worrel Testnet** is an open-source Grand Valley project for operating nodes and validators on the **Worrell** test network.
+
+**Worrell** is a proof-of-stake blockchain built with Ignite CLI and the Cosmos SDK, using CometBFT consensus and focused on payments and energy infrastructure. The project includes staking and delegation, on-chain governance, dynamic inflation, and IBC support that is installed upstream but disabled at genesis while the network stabilises.
+
+This Valley package turns the official Worrell node procedure into an auditable, interactive workflow. It covers node installation, configuration, syncing, peer management, validator/key operations, systemd lifecycle, and Cosmovisor-based upgrade preparation. It does not claim to provide an official Worrell endpoint, faucet automation, or automatic transaction signing.
+
 ## Network
 
 | Field | Value |
