@@ -17,6 +17,7 @@ grep -q 'APPLY-WORRELL-SNAPSHOT' "$snapshot"
 grep -q 'priv_validator_state.json' "$snapshot"
 grep -q 'Pending upgrade-info.json exists' "$snapshot"
 grep -q 'upgrade-info.json' "$snapshot"
+grep -q 'restore_prior_service_state' "$snapshot"
 
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
@@ -78,7 +79,7 @@ python3 - "$snapshot" <<'PYORDER'
 from pathlib import Path
 import sys
 s = Path(sys.argv[1]).read_text()
-start = s.index('apply_selected_snapshot() {')
+start = s.index('apply_selected_snapshot() (')
 end = s.index('choose_snapshot_type() {', start)
 body = s[start:end]
 assert body.index('systemctl stop "$WORRELL_SERVICE_NAME"') < body.index('install -m 0600 "$old_data/priv_validator_state.json"')

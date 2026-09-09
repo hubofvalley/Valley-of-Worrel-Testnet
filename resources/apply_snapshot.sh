@@ -131,9 +131,7 @@ rollback_snapshot() {
     sudo systemctl stop "$WORRELL_SERVICE_NAME" 2>/dev/null || true
     rm -rf "$old_data"
     if [ -d "$rollback_data" ]; then mv "$rollback_data" "$old_data"; fi
-    if [ "$was_active" = yes ]; then
-        sudo systemctl start "$WORRELL_SERVICE_NAME" || true
-    fi
+    restore_prior_service_state "$was_active" || true
 }
 
 wait_for_healthy_service() {
@@ -151,10 +149,26 @@ wait_for_healthy_service() {
     return 1
 }
 
-apply_selected_snapshot() {
+restore_prior_service_state() {
+    local was_active="$1"
+    if [ "$was_active" = yes ]; then
+        if ! sudo systemctl start "$WORRELL_SERVICE_NAME"; then
+            echo -e "${RED}Could not restore the previously active $WORRELL_SERVICE_NAME service.${RESET}" >&2
+            return 1
+        fi
+        if ! wait_for_healthy_service; then
+            echo -e "${RED}Previously active $WORRELL_SERVICE_NAME did not pass health checks after restoration.${RESET}" >&2
+            return 1
+        fi
+    else
+        sudo systemctl stop "$WORRELL_SERVICE_NAME" 2>/dev/null || true
+    fi
+}
+
+apply_selected_snapshot() (
     local workdir archive headers listing extracted state_backup timestamp old_data rollback_data was_active=no
     workdir=$(mktemp -d)
-    trap 'rm -rf "$workdir"' RETURN
+    trap 'rm -rf "$workdir"' EXIT
     archive="$workdir/worrell-snapshot.tar.lz4"
     headers="$workdir/headers"
     listing="$workdir/listing"
@@ -180,18 +194,18 @@ apply_selected_snapshot() {
     fi
     sudo systemctl is-active --quiet "$WORRELL_SERVICE_NAME" && {
         echo -e "${RED}$WORRELL_SERVICE_NAME is still active after stop; refusing data replacement.${RESET}" >&2
-        [ "$was_active" = yes ] && sudo systemctl start "$WORRELL_SERVICE_NAME" || true
+        restore_prior_service_state "$was_active" || true
         return 1
     }
     state_backup="$workdir/priv_validator_state.json"
     if ! install -m 0600 "$old_data/priv_validator_state.json" "$state_backup"; then
         echo -e "${RED}Could not back up validator state after stopping the service.${RESET}" >&2
-        [ "$was_active" = yes ] && sudo systemctl start "$WORRELL_SERVICE_NAME" || true
+        restore_prior_service_state "$was_active" || true
         return 1
     fi
     if ! mv "$old_data" "$rollback_data"; then
         echo -e "${RED}Could not prepare the rollback data directory.${RESET}" >&2
-        [ "$was_active" = yes ] && sudo systemctl start "$WORRELL_SERVICE_NAME" || true
+        restore_prior_service_state "$was_active" || true
         return 1
     fi
     if ! mv "$extracted/data" "$old_data"; then
@@ -217,15 +231,19 @@ apply_selected_snapshot() {
             return 1
         fi
     fi
-    if ! rm -rf "$rollback_data"; then
-        echo -e "${YELLOW}Snapshot applied, but rollback data could not be removed: $rollback_data${RESET}" >&2
+    if [ "$was_active" = yes ]; then
+        if ! rm -rf "$rollback_data"; then
+            echo -e "${YELLOW}Snapshot applied, but rollback data could not be removed: $rollback_data${RESET}" >&2
+        fi
+    else
+        echo -e "${YELLOW}Node was inactive before the snapshot; rollback data retained at: $rollback_data${RESET}"
     fi
     echo -e "${GREEN}Snapshot applied successfully. Validator state and config were preserved.${RESET}"
     echo -e "${CYAN}Provider:${RESET} $SNAPSHOT_PROVIDER"
     echo -e "${CYAN}Snapshot height:${RESET} $SNAPSHOT_HEIGHT"
     echo -e "${CYAN}Service:${RESET} $WORRELL_SERVICE_NAME (${was_active/yes/restarted})"
     prompt_back_or_continue
-}
+)
 
 choose_snapshot_type() {
     local provider="$1" choice
