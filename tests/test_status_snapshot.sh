@@ -18,8 +18,10 @@ grep -q 'priv_validator_state.json' "$snapshot"
 grep -q 'Pending upgrade-info.json exists' "$snapshot"
 grep -q 'upgrade-info.json' "$snapshot"
 grep -q 'restore_prior_service_state' "$snapshot"
-grep -q 'Fresh signer state could not be captured' "$snapshot"
+grep -q 'Fresh signer state was missing, invalid, or regressed' "$snapshot"
 grep -q 'upgrade-info.json appeared while the service was stopping' "$snapshot"
+grep -q 'service_is_inactive' "$snapshot"
+grep -q 'signer_state_at_least' "$snapshot"
 
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
@@ -76,40 +78,50 @@ if HOME="$fixture" bash -c 'source "$1"; validate_archive_layout "$2" "$3"' bash
   exit 1
 fi
 
-# Source-order assertions cover the signer-state race and post-start stabilization.
-python3 - "$snapshot" <<'PYORDER'
-from pathlib import Path
-import sys
-s = Path(sys.argv[1]).read_text()
-start = s.index('apply_selected_snapshot() (')
-end = s.index('choose_snapshot_type() {', start)
-body = s[start:end]
-assert body.index('systemctl stop "$WORRELL_SERVICE_NAME"') < body.index('install -m 0600 "$old_data/priv_validator_state.json"')
-assert body.index('systemctl stop "$WORRELL_SERVICE_NAME"') < body.index('install -m 0600 "$old_data/priv_validator_state.json"')
-assert 'rollback_snapshot "$old_data" "$rollback_data" "$was_active" yes' in body
-PYORDER
-
-# Rollback must preserve the freshest signer state produced by the replacement service.
+# Rollback must stop the replacement first and preserve the freshest signer state.
 rollback_fixture=$(mktemp -d)
 mkdir -p "$rollback_fixture/home/config" "$rollback_fixture/home/data" "$rollback_fixture/rollback"
 printf 'laddr = "tcp://127.0.0.1:26657"\n' > "$rollback_fixture/home/config/config.toml"
 printf '{"height":"11","round":0,"step":3}\n' > "$rollback_fixture/home/data/priv_validator_state.json"
 printf '{"height":"10","round":0,"step":3}\n' > "$rollback_fixture/rollback/priv_validator_state.json"
 printf active > "$rollback_fixture/service-state"
-HOME="$rollback_fixture" WORRELL_HOME="$rollback_fixture/home" WORRELL_SERVICE_NAME=worrelld bash -c '
+STATE12='{"height":"12","round":0,"step":3}' RPC12='{"result":{"node_info":{"network":"worrell-testnet-1"},"sync_info":{"latest_block_height":"12"}}}' HOME="$rollback_fixture" WORRELL_HOME="$rollback_fixture/home" WORRELL_SERVICE_NAME=worrelld bash -c '
   source "$1"
   sudo() {
     case "$2" in
-      stop) printf inactive > "$HOME/service-state"; return 0 ;;
+      stop) printf inactive > "$HOME/service-state"; printf "%s\\n" "$STATE12" > "$HOME/home/data/priv_validator_state.json"; return 0 ;;
       start) printf active > "$HOME/service-state"; return 0 ;;
-      is-active) grep -q active "$HOME/service-state" ;;
+      is-active)
+        if [ "${3:-}" = --quiet ]; then grep -q active "$HOME/service-state"; else cat "$HOME/service-state"; fi ;;
       *) return 1 ;;
     esac
   }
-  curl() { printf '\''{"result":{"node_info":{"network":"worrell-testnet-1"},"sync_info":{"latest_block_height":"11"}}}'\''; }
+  curl() { printf "%s\\n" "$RPC12"; }
   rollback_snapshot "$HOME/home/data" "$HOME/rollback" yes yes
-  jq -e '\''.height == "11"'\'' "$HOME/home/data/priv_validator_state.json" >/dev/null
+  grep -q "\\\"height\\\":\\\"12\\\"" "$HOME/home/data/priv_validator_state.json"
 ' bash "$fixture/snapshot-functions.sh"
 rm -rf "$rollback_fixture"
+
+# A failed stop while still active must not mutate either data tree.
+stop_fail_fixture=$(mktemp -d)
+mkdir -p "$stop_fail_fixture/home/data" "$stop_fail_fixture/rollback"
+printf '{"height":"11","round":0,"step":3}\n' > "$stop_fail_fixture/home/data/priv_validator_state.json"
+printf '{"height":"10","round":0,"step":3}\n' > "$stop_fail_fixture/rollback/priv_validator_state.json"
+printf active > "$stop_fail_fixture/service-state"
+HOME="$stop_fail_fixture" WORRELL_HOME="$stop_fail_fixture/home" WORRELL_SERVICE_NAME=worrelld bash -c '
+  source "$1"
+  sudo() {
+    case "$2" in
+      stop) printf active > "$HOME/service-state"; return 1 ;;
+      is-active) cat "$HOME/service-state" ;;
+      *) return 1 ;;
+    esac
+  }
+  if rollback_snapshot "$HOME/home/data" "$HOME/rollback" yes yes; then exit 1; fi
+  test -d "$HOME/home/data" && test -d "$HOME/rollback"
+  grep -q "height" "$HOME/home/data/priv_validator_state.json"
+  grep -q "height" "$HOME/rollback/priv_validator_state.json"
+' bash "$fixture/snapshot-functions.sh"
+rm -rf "$stop_fail_fixture"
 
 echo 'Worrel status and snapshot tests: PASS'

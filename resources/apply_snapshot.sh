@@ -125,21 +125,52 @@ extract_snapshot() {
     rm -f "$target/data/priv_validator_state.json" "$target/data/upgrade-info.json"
 }
 
+service_is_inactive() {
+    local state
+    state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+    case "$state" in
+        inactive|failed|dead) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+signer_state_tuple() {
+    jq -e -r '[.height, .round, .step] | map(tostring) | map(select(test("^[0-9]+$")) | tonumber) | if length == 3 then @tsv else error("invalid signer state") end' "$1" 2>/dev/null
+}
+
+signer_state_at_least() {
+    local old_state="$1" new_state="$2" oh or os nh nr ns
+    read -r oh or os <<< "$(signer_state_tuple "$old_state")" || return 1
+    read -r nh nr ns <<< "$(signer_state_tuple "$new_state")" || return 1
+    ((nh > oh || (nh == oh && nr > or) || (nh == oh && nr == or && ns >= os)))
+}
+
 rollback_snapshot() {
     local old_data="$1" rollback_data="$2" was_active="$3" service_started="${4:-no}"
-    local fresh_state="" fresh_state_valid=no
+    local fresh_state="" fresh_state_valid=no old_state="$rollback_data/priv_validator_state.json"
     echo -e "${RED}Snapshot operation failed; restoring the previous node data.${RESET}" >&2
 
-    # If the replacement service started, capture its freshest signer state before
-    # stopping it. Never restart a validator with an older state after rollback.
-    if [ "$service_started" = yes ] && [ -f "$old_data/priv_validator_state.json" ]; then
-        if jq -e 'type == "object" and (.height | tostring | test("^[0-9]+$"))' "$old_data/priv_validator_state.json" >/dev/null 2>&1 && fresh_state=$(mktemp); then
-            if install -m 0600 "$old_data/priv_validator_state.json" "$fresh_state"; then
-                fresh_state_valid=yes
-            fi
+    # Fence the replacement process before touching either data tree. If it
+    # cannot be confirmed inactive, leave both trees untouched for manual recovery.
+    if ! sudo systemctl stop "$WORRELL_SERVICE_NAME" 2>/dev/null; then
+        if ! service_is_inactive; then
+            echo -e "${RED}Could not stop the replacement service safely. Data was not changed; validator remains offline for manual recovery.${RESET}" >&2
+            return 1
         fi
     fi
-    sudo systemctl stop "$WORRELL_SERVICE_NAME" 2>/dev/null || true
+    if ! service_is_inactive; then
+        echo -e "${RED}Replacement service is not confirmed inactive. Data was not changed; validator remains offline for manual recovery.${RESET}" >&2
+        return 1
+    fi
+
+    # Capture signer state only after the replacement process is fenced. Never
+    # restart with a state older than the state already used by that process.
+    if [ "$service_started" = yes ] && [ -f "$old_data/priv_validator_state.json" ]; then
+        if fresh_state=$(mktemp) && install -m 0600 "$old_data/priv_validator_state.json" "$fresh_state" && signer_state_at_least "$old_state" "$fresh_state"; then
+            fresh_state_valid=yes
+        fi
+    fi
+
     rm -rf "$old_data"
     if [ -d "$rollback_data" ]; then mv "$rollback_data" "$old_data"; fi
 
@@ -148,7 +179,7 @@ rollback_snapshot() {
             install -m 0600 "$fresh_state" "$old_data/priv_validator_state.json"
             restore_prior_service_state "$was_active" || true
         else
-            echo -e "${RED}Fresh signer state could not be captured during rollback. Validator remains offline for manual recovery.${RESET}" >&2
+            echo -e "${RED}Fresh signer state was missing, invalid, or regressed. Validator remains offline for manual recovery.${RESET}" >&2
         fi
     else
         restore_prior_service_state "$was_active" || true
@@ -215,8 +246,8 @@ apply_selected_snapshot() (
         restore_prior_service_state "$was_active" || true
         return 1
     fi
-    if sudo systemctl is-active --quiet "$WORRELL_SERVICE_NAME"; then
-        echo -e "${RED}$WORRELL_SERVICE_NAME is still active after stop; refusing data replacement.${RESET}" >&2
+    if ! service_is_inactive; then
+        echo -e "${RED}$WORRELL_SERVICE_NAME is not confirmed inactive after stop; refusing data replacement.${RESET}" >&2
         restore_prior_service_state "$was_active" || true
         return 1
     fi
