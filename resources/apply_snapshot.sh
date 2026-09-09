@@ -126,12 +126,34 @@ extract_snapshot() {
 }
 
 rollback_snapshot() {
-    local old_data="$1" rollback_data="$2" was_active="$3"
+    local old_data="$1" rollback_data="$2" was_active="$3" service_started="${4:-no}"
+    local fresh_state="" fresh_state_valid=no
     echo -e "${RED}Snapshot operation failed; restoring the previous node data.${RESET}" >&2
+
+    # If the replacement service started, capture its freshest signer state before
+    # stopping it. Never restart a validator with an older state after rollback.
+    if [ "$service_started" = yes ] && [ -f "$old_data/priv_validator_state.json" ]; then
+        if jq -e 'type == "object" and (.height | tostring | test("^[0-9]+$"))' "$old_data/priv_validator_state.json" >/dev/null 2>&1 && fresh_state=$(mktemp); then
+            if install -m 0600 "$old_data/priv_validator_state.json" "$fresh_state"; then
+                fresh_state_valid=yes
+            fi
+        fi
+    fi
     sudo systemctl stop "$WORRELL_SERVICE_NAME" 2>/dev/null || true
     rm -rf "$old_data"
     if [ -d "$rollback_data" ]; then mv "$rollback_data" "$old_data"; fi
-    restore_prior_service_state "$was_active" || true
+
+    if [ "$service_started" = yes ]; then
+        if [ "$fresh_state_valid" = yes ]; then
+            install -m 0600 "$fresh_state" "$old_data/priv_validator_state.json"
+            restore_prior_service_state "$was_active" || true
+        else
+            echo -e "${RED}Fresh signer state could not be captured during rollback. Validator remains offline for manual recovery.${RESET}" >&2
+        fi
+    else
+        restore_prior_service_state "$was_active" || true
+    fi
+    [ -z "$fresh_state" ] || rm -f "$fresh_state"
 }
 
 wait_for_healthy_service() {
@@ -190,13 +212,19 @@ apply_selected_snapshot() (
     if sudo systemctl is-active --quiet "$WORRELL_SERVICE_NAME"; then was_active=yes; fi
     if ! sudo systemctl stop "$WORRELL_SERVICE_NAME"; then
         echo -e "${RED}Could not stop $WORRELL_SERVICE_NAME; snapshot was not applied.${RESET}" >&2
+        restore_prior_service_state "$was_active" || true
         return 1
     fi
-    sudo systemctl is-active --quiet "$WORRELL_SERVICE_NAME" && {
+    if sudo systemctl is-active --quiet "$WORRELL_SERVICE_NAME"; then
         echo -e "${RED}$WORRELL_SERVICE_NAME is still active after stop; refusing data replacement.${RESET}" >&2
         restore_prior_service_state "$was_active" || true
         return 1
-    }
+    fi
+    if [ -e "$old_data/upgrade-info.json" ]; then
+        echo -e "${RED}A pending upgrade-info.json appeared while the service was stopping. Snapshot aborted without replacing data.${RESET}" >&2
+        restore_prior_service_state "$was_active" || true
+        return 1
+    fi
     state_backup="$workdir/priv_validator_state.json"
     if ! install -m 0600 "$old_data/priv_validator_state.json" "$state_backup"; then
         echo -e "${RED}Could not back up validator state after stopping the service.${RESET}" >&2
@@ -223,11 +251,11 @@ apply_selected_snapshot() (
 
     if [ "$was_active" = yes ]; then
         if ! sudo systemctl start "$WORRELL_SERVICE_NAME"; then
-            rollback_snapshot "$old_data" "$rollback_data" "$was_active"
+            rollback_snapshot "$old_data" "$rollback_data" "$was_active" yes
             return 1
         fi
         if ! wait_for_healthy_service; then
-            rollback_snapshot "$old_data" "$rollback_data" "$was_active"
+            rollback_snapshot "$old_data" "$rollback_data" "$was_active" yes
             return 1
         fi
     fi

@@ -18,6 +18,8 @@ grep -q 'priv_validator_state.json' "$snapshot"
 grep -q 'Pending upgrade-info.json exists' "$snapshot"
 grep -q 'upgrade-info.json' "$snapshot"
 grep -q 'restore_prior_service_state' "$snapshot"
+grep -q 'Fresh signer state could not be captured' "$snapshot"
+grep -q 'upgrade-info.json appeared while the service was stopping' "$snapshot"
 
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
@@ -83,8 +85,31 @@ start = s.index('apply_selected_snapshot() (')
 end = s.index('choose_snapshot_type() {', start)
 body = s[start:end]
 assert body.index('systemctl stop "$WORRELL_SERVICE_NAME"') < body.index('install -m 0600 "$old_data/priv_validator_state.json"')
-assert body.index('wait_for_healthy_service') < body.index('rm -rf "$rollback_data"')
-assert 'rollback_snapshot "$old_data" "$rollback_data" "$was_active"' in body
+assert body.index('systemctl stop "$WORRELL_SERVICE_NAME"') < body.index('install -m 0600 "$old_data/priv_validator_state.json"')
+assert 'rollback_snapshot "$old_data" "$rollback_data" "$was_active" yes' in body
 PYORDER
+
+# Rollback must preserve the freshest signer state produced by the replacement service.
+rollback_fixture=$(mktemp -d)
+mkdir -p "$rollback_fixture/home/config" "$rollback_fixture/home/data" "$rollback_fixture/rollback"
+printf 'laddr = "tcp://127.0.0.1:26657"\n' > "$rollback_fixture/home/config/config.toml"
+printf '{"height":"11","round":0,"step":3}\n' > "$rollback_fixture/home/data/priv_validator_state.json"
+printf '{"height":"10","round":0,"step":3}\n' > "$rollback_fixture/rollback/priv_validator_state.json"
+printf active > "$rollback_fixture/service-state"
+HOME="$rollback_fixture" WORRELL_HOME="$rollback_fixture/home" WORRELL_SERVICE_NAME=worrelld bash -c '
+  source "$1"
+  sudo() {
+    case "$2" in
+      stop) printf inactive > "$HOME/service-state"; return 0 ;;
+      start) printf active > "$HOME/service-state"; return 0 ;;
+      is-active) grep -q active "$HOME/service-state" ;;
+      *) return 1 ;;
+    esac
+  }
+  curl() { printf '\''{"result":{"node_info":{"network":"worrell-testnet-1"},"sync_info":{"latest_block_height":"11"}}}'\''; }
+  rollback_snapshot "$HOME/home/data" "$HOME/rollback" yes yes
+  jq -e '\''.height == "11"'\'' "$HOME/home/data/priv_validator_state.json" >/dev/null
+' bash "$fixture/snapshot-functions.sh"
+rm -rf "$rollback_fixture"
 
 echo 'Worrel status and snapshot tests: PASS'
