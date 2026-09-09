@@ -16,7 +16,7 @@ WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://worrel-testnet-rpc.oshvank.xy
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
 readonly VALLEY_INSTALLER_SHA256="60d1645693e10f65846bb56c01ffed643ba15db22b5c4024bc4cc95143b8aef5"
 readonly VALLEY_UPDATER_SHA256="07ceef513c3acc65c6a4efa6540f92bf037ce66b16d524f424ca2c07e55a1b70"
-readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/7048848/resources"
+readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/ee2d1c609d41df9635aa40acb21e96f25b06e2dd/resources"
 
 LOGO=''
 LOGO+=' __      __                    _ _               _\n'
