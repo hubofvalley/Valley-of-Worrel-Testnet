@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "network": "worrell-testnet",
+  "human_name": "Valley of Worrel - Testnet",
+  "last_updated": "2026-09-09",
+  "source_of_truth": "github.com/hubofvalley/Valley-of-Worrel-Testnet (resources/*.sh)",
+  "verification_status": "needs_live_verification",
+  "verification_note": "Seeded from the official Worrell node runbook and networks metadata. Live install, sync, validator state, and endpoint availability are not verified by this repository build.",
+  "release": {
+    "tag": "v0.1.2",
+    "commit": "2d849e1a33f6204952412a14e7b12cb5ef3870dd",
+    "prerelease": true,
+    "artifact_sha256": {
+      "v0.1.2_linux_amd64.tar.gz": "1542bc561227ecd6bfb2d35f3bc81b8fd34e6f6db1404923b5bf5bd4b8303cd2",
+      "v0.1.2_linux_arm64.tar.gz": "3d4a9ffc754c39400c31af6599d030c2652914094a772f38e7a8284aafc7f58f"
+    }
+  },
+  "chain": {
+    "chain_spec": "worrelltestnet",
+    "chain_id": "worrell-testnet-1",
+    "evm_chain_id": null,
+    "consensus_default_rpc_port": 26657,
+    "consensus_default_p2p_port": 26656,
+    "consensus_default_abci_port": 26658
+  },
+  "components": {
+    "validator": {
+      "name": "worrell-testnet-validator",
+      "role": "validator",
+      "version_model": "direct_component_versions",
+      "consensus": {
+        "binary": "worrelld",
+        "version_current": "v0.1.2",
+        "release_repo": "https://github.com/worrellchain/worrell",
+        "release_artifact": "v0.1.2_{os}_{arch}.tar.gz",
+        "release_checksum_url": "https://github.com/worrellchain/worrell/releases/download/v0.1.2/release_checksum",
+        "install_source": "resources/worrelld_node_install_testnet.sh",
+        "update_source": "resources/worrelld_update.sh",
+        "needs_live_verification": true
+      },
+      "services": {
+        "consensus": "worrelld"
+      },
+      "home_dir": "$HOME/.worrell",
+      "binary_install_dir": "$HOME/go/bin"
+    }
+  },
+  "network": {
+    "genesis_url": "https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-1/genesis.json",
+    "genesis_sha256": "a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd",
+    "persistent_peers": [
+      "bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656",
+      "40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656"
+    ],
+    "public_rpc_candidates": [
+      "https://worrel-testnet-rpc.oshvank.xyz",
+      "https://worrell-testnet-rpc.itrocket.net",
+      "https://worrell-testnet-rpc.nodesync.top",
+      "https://worrell-testnet-rpc.bonynode.online",
+      "https://rpc-worrell.test.onenov.xyz",
+      "https://worrellchain-rpctest.codeblocklabs.com",
+      "https://t-worrell.rpc.utsa.tech"
+    ],
+    "snapshot": null,
+    "faucet": "http://164.68.98.186:4500"
+  }
+}
