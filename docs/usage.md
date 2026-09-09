@@ -2,8 +2,13 @@
 
 ## Run
 
+The Valley repository is private. Authenticate with GitHub CLI, then clone and run the reviewed `main` branch:
+
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/main/resources/valleyofWorrel.sh)
+workdir="$(mktemp -d)"
+trap 'rm -rf "$workdir"' EXIT
+gh repo clone hubofvalley/Valley-of-Worrel-Testnet "$workdir/repo" -- --branch main --depth 1
+bash "$workdir/repo/resources/valleyofWorrel.sh"
 ```
 
 Run as the node OS user. Do not use `sudo bash`; the scripts request sudo only for packages, firewall, and systemd operations.

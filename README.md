@@ -29,8 +29,13 @@ Interactive terminal toolkit by **Grand Valley** for deploying and managing a Wo
 
 ## Run
 
+The repository is private, so authenticate with GitHub CLI and clone the reviewed `main` branch before running the menu:
+
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/main/resources/valleyofWorrel.sh)
+workdir="$(mktemp -d)"
+trap 'rm -rf "$workdir"' EXIT
+gh repo clone hubofvalley/Valley-of-Worrel-Testnet "$workdir/repo" -- --branch main --depth 1
+bash "$workdir/repo/resources/valleyofWorrel.sh"
 ```
 
 Run it as the OS user that owns the node. Do not run the launcher with `sudo`.
