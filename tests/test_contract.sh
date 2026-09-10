@@ -31,6 +31,20 @@ grep -q "VALLEY_UPDATER_SHA256=\"$u\"" "$menu"
 grep -q "VALLEY_COSMOVISOR_MIGRATION_SHA256=\"$m\"" "$menu"
 grep -q "VALLEY_COSMOVISOR_UPGRADE_SHA256=\"$x\"" "$menu"
 grep -q "VALLEY_SNAPSHOT_SHA256=\"$v\"" "$menu"
+script_commit=$(sed -n 's/^readonly VALLEY_SCRIPT_COMMIT="\([0-9a-f]\{40\}\)"$/\1/p' "$menu")
+[ -n "$script_commit" ]
+git -C "$repo" cat-file -e "$script_commit^{commit}"
+for helper in worrelld_node_install_testnet.sh worrelld_update.sh cosmovisor_migration.sh worrelld_cosmovisor_upgrade.sh apply_snapshot.sh; do
+    pinned=$(git -C "$repo" show "$script_commit:resources/$helper" | sha256sum | awk '{print $1}')
+    case "$helper" in
+        worrelld_node_install_testnet.sh) expected="$a" ;;
+        worrelld_update.sh) expected="$u" ;;
+        cosmovisor_migration.sh) expected="$m" ;;
+        worrelld_cosmovisor_upgrade.sh) expected="$x" ;;
+        apply_snapshot.sh) expected="$v" ;;
+    esac
+    test "$pinned" = "$expected"
+done
 grep -q '10#\$1 >= 10' "$installer"
 grep -q '10#\$1 <= 64' "$installer"
 grep -q 'cd "$workdir"' "$installer"
