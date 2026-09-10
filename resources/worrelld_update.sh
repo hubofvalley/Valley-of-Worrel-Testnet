@@ -11,7 +11,11 @@ export PATH="$HOME/go/bin:/usr/local/bin:$PATH"
 ROOT_MODE=no
 if [ "${EUID:-$(id -u)}" -eq 0 ]; then ROOT_MODE=yes; fi
 WORRELL_HOME="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell}" || printf '%s' "$HOME/.worrell")}"
-WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell.env}"
+if [ "$ROOT_MODE" = yes ]; then
+    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+else
+    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell.env}"
+fi
 if [ -r "$WORRELL_ENV_FILE" ]; then
     # shellcheck disable=SC1090
     source "$WORRELL_ENV_FILE"

@@ -23,7 +23,11 @@ else
     BINARY_DIR="${WORRELL_BINARY_DIR:-$HOME/go/bin}"
 fi
 SERVICE_GROUP="${WORRELL_SERVICE_GROUP:-$SERVICE_USER}"
-WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell.env}"
+if [ "$ROOT_MODE" = yes ]; then
+    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+else
+    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell.env}"
+fi
 readonly COSMOVISOR_VERSION="${WORRELL_COSMOVISOR_VERSION:-v1.7.3}"
 COSMOVISOR_BIN="$BINARY_DIR/cosmovisor"
 WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-true}"
@@ -80,8 +84,13 @@ valid_service() { [[ "$1" =~ ^[A-Za-z0-9_.@-]+$ ]]; }
 
 write_runtime_env() {
     local env_file="$WORRELL_ENV_FILE"
-    install -d -m 0750 "$HOME_DIR"
-    umask 077
+    if [ "$ROOT_MODE" = yes ]; then
+        install -d -m 0755 /etc/worrelld
+        install -m 0644 /dev/null "$env_file"
+    else
+        install -d -m 0750 "$HOME_DIR"
+        umask 077
+    fi
     cat > "$env_file" <<EOF
 export WORRELL_HOME=$(printf '%q' "$HOME_DIR")
 export WORRELL_ENV_FILE=$(printf '%q' "$env_file")
@@ -93,7 +102,7 @@ export WORRELL_PORT_PREFIX=$(printf '%q' "$PORT_PREFIX")
 export WORRELL_UNSAFE_SKIP_BACKUP=$(printf '%q' "$WORRELL_UNSAFE_SKIP_BACKUP")
 EOF
     if [ "$ROOT_MODE" = yes ]; then
-        chown "$SERVICE_USER:$SERVICE_GROUP" "$env_file"
+        chown root:root "$env_file"
     fi
 }
 

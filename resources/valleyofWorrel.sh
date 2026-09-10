@@ -13,7 +13,11 @@ if [ -z "${WORRELL_HOME:-}" ]; then
         WORRELL_HOME="$HOME/.worrell"
     fi
 fi
-WORRELL_ENV_FILE=${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell.env}
+if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+else
+    WORRELL_ENV_FILE=${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell.env}
+fi
 if [ -r "$WORRELL_ENV_FILE" ]; then
     # shellcheck disable=SC1090
     source "$WORRELL_ENV_FILE"

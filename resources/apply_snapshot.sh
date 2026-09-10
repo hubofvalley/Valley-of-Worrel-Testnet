@@ -18,7 +18,11 @@ readonly ITROCKET_META_URL="https://server-3.itrocket.net/testnet/worrell/.curre
 readonly ITROCKET_BASE_URL="https://server-3.itrocket.net/testnet/worrell"
 readonly SYCHONIX_SNAPSHOT_URL="https://snapshot.sychonix.com/testnet/worrell/worrell-snapshot.tar.lz4"
 WORRELL_HOME="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell}" || printf '%s' "$HOME/.worrell")}"
-WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell.env}"
+if [ "$ROOT_MODE" = yes ]; then
+    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+else
+    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell.env}"
+fi
 if [ -r "$WORRELL_ENV_FILE" ]; then
     # shellcheck disable=SC1090
     source "$WORRELL_ENV_FILE"
@@ -199,6 +203,7 @@ rollback_snapshot() {
     if [ "$service_started" = yes ]; then
         if [ "$fresh_state_valid" = yes ]; then
             install -m 0600 "$fresh_state" "$old_data/priv_validator_state.json"
+            fix_node_ownership "$old_data"
             restore_prior_service_state "$was_active" || true
         else
             echo -e "${RED}Fresh signer state was missing, invalid, or regressed. Validator remains offline for manual recovery.${RESET}" >&2
@@ -298,6 +303,7 @@ apply_selected_snapshot() (
         rollback_snapshot "$old_data" "$rollback_data" "$was_active"
         return 1
     fi
+    fix_node_ownership "$old_data"
     if ! sync; then
         rollback_snapshot "$old_data" "$rollback_data" "$was_active"
         return 1
