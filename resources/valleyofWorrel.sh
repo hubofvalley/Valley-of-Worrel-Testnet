@@ -33,13 +33,13 @@ WORRELL_UNSAFE_SKIP_BACKUP=${WORRELL_UNSAFE_SKIP_BACKUP:-true}
 WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://worrel-testnet-rpc.oshvank.xyz}
 WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
-readonly VALLEY_INSTALLER_SHA256="4c16d3e8637baf15d23c8c9c1ddffcee60fce1b422dfc47cf5b393b7fab84acf"
-readonly VALLEY_UPDATER_SHA256="73b87a02e29ab2318917999074217206476e76615dd39b3fed429a644c641ea4"
-readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="d5b54141092e84b43d69802c864c24a1019bfccbc197fd8a4d1cf9f5b20e24a0"
-readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="5aea631858fda4c7524dc1b7e3521b52a8c7d6ca599cc19095e29c065c13180f"
-readonly VALLEY_SNAPSHOT_SHA256="be86b74391eace7d34c069bad767e8490618b61705948a5fe2da2bd5548a8a8e"
-readonly VALLEY_SCRIPT_COMMIT="abe254c2daba3ef64feb602aeb56c08c09b16946"
-readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/abe254c2daba3ef64feb602aeb56c08c09b16946/resources"
+readonly VALLEY_INSTALLER_SHA256="d47a239010d10790279f77f5cf7b2c6ce59284534cad751e3a3123c5cda5f395"
+readonly VALLEY_UPDATER_SHA256="fa074336f167c6189e05847bc87e448994bfdc335003ec5c20cb2d47b2243c14"
+readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="7b384a62d99a8a068ede9ef3145eb2a5d97121b534f7b3c565170d011aa20b0d"
+readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="c2579a36e6a11fdba35b8d9c1ed700d72b9833f5e5f70a7d91abf085d6e54a31"
+readonly VALLEY_SNAPSHOT_SHA256="d63003514944d25b731d047c6bf01891c0a709955d4d76f2798358a542609061"
+readonly VALLEY_SCRIPT_COMMIT="53bf38fd2c477a690d8f9072c8d2def1d17d9e90"
+readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/53bf38fd2c477a690d8f9072c8d2def1d17d9e90/resources"
 
 export WORRELL_HOME WORRELL_ENV_FILE WORRELL_CHAIN_ID WORRELL_SERVICE_NAME
 export WORRELL_SERVICE_USER WORRELL_PORT_PREFIX WORRELL_TARGET_VERSION WORRELL_UNSAFE_SKIP_BACKUP
