@@ -14,12 +14,12 @@ WORRELL_TARGET_VERSION=${WORRELL_TARGET_VERSION:-v0.1.2}
 WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://worrel-testnet-rpc.oshvank.xyz}
 WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
-readonly VALLEY_INSTALLER_SHA256="bddfb1b1f15081e2fbd8fe7fcc173617ee8fce089a5c5f9a428d1c6320b3c76f"
+readonly VALLEY_INSTALLER_SHA256="36f4c8c754b95a87a4f833d1a8c3785249706dde49522cb29617b35c103d518c"
 readonly VALLEY_UPDATER_SHA256="07ceef513c3acc65c6a4efa6540f92bf037ce66b16d524f424ca2c07e55a1b70"
 readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="c37898ad62f0cd8b031cfc4a19b129473ab56a457cb2ca4a3d5da32fa6334d90"
 readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="68414d1792a1f5bde935a5a1e9c14660a881b185ed5b95a199a9a68bb76a72a7"
 readonly VALLEY_SNAPSHOT_SHA256="60daf78203ba96a85dd174b6cacc949cc94a1e3f84603c725d827119e54ee3ed"
-readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/eea1ecda41e640c49f61bd5b97029b0334b03944/resources"
+readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/fd8f8563a95285fe5e3fea382310cebf7c67421b/resources"
 
 LOGO=$(cat <<'EOF'
  __        __                    _

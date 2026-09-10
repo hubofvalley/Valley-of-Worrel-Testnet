@@ -59,9 +59,19 @@ valid_prefix() { [[ "$1" =~ ^[0-9]{2}$ ]] && ((10#$1 >= 10 && 10#$1 <= 64)); }
 valid_service() { [[ "$1" =~ ^[A-Za-z0-9_.@-]+$ ]]; }
 
 save_env() {
-    local profile="$HOME/.bash_profile"
+    local profile="$HOME/.bash_profile" path_line tmp line
     touch "$profile"
     sed -i -E '/^export WORRELL_(CHAIN_ID|HOME|SERVICE_NAME|PORT_PREFIX|MONIKER|TARGET_VERSION)=/d' "$profile"
+    path_line="export PATH=\"$BINARY_DIR:\$PATH\""
+    tmp=$(mktemp)
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [ "$line" = 'export PATH="$HOME/go/bin:$PATH"' ] || [ "$line" = "$path_line" ]; then
+            continue
+        fi
+        printf '%s\n' "$line"
+    done < "$profile" > "$tmp"
+    cat "$tmp" > "$profile"
+    rm -f "$tmp"
     {
         printf 'export WORRELL_CHAIN_ID=%q\n' "$CHAIN_ID"
         printf 'export WORRELL_HOME=%q\n' "$HOME_DIR"
@@ -69,7 +79,7 @@ save_env() {
         printf 'export WORRELL_PORT_PREFIX=%q\n' "$PORT_PREFIX"
         printf 'export WORRELL_MONIKER=%q\n' "$MONIKER"
         printf 'export WORRELL_TARGET_VERSION=%q\n' "$WORRELL_VERSION"
-        printf 'export PATH="%s:$PATH"\n' "$BINARY_DIR"
+        printf 'export PATH="$HOME/go/bin:$PATH"\n'
     } >> "$profile"
 }
 

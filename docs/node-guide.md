@@ -33,6 +33,8 @@ export PATH="$HOME/go/bin:$PATH"
 worrelld version --long | head -5
 ```
 
+The Valley installer persists this canonical path as one `export PATH="$HOME/go/bin:$PATH"` entry in `~/.bash_profile`; re-running it removes prior copies before saving the entry again. Source the profile after installation with `source ~/.bash_profile`.
+
 Use the matching `linux_arm64` asset on ARM. A source build requires Go `1.25.10+`, git, make, and build-essential:
 
 ```bash
