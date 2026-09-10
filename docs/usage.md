@@ -8,7 +8,7 @@ Run the reviewed public launcher directly:
 bash <(curl -fsSL https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/main/resources/valleyofWorrel.sh)
 ```
 
-Run as the node OS user. Do not use `sudo bash`; the scripts request sudo only for packages, firewall, and systemd operations.
+Run as the node OS user. Do not use `sudo bash` when a normal node user exists; the scripts request sudo only for packages, firewall, and systemd operations. On a root-only RPC host, the installer creates a dedicated `worrell` service user, uses `/var/lib/worrell`, and writes the service with that unprivileged account.
 
 ## Menu options
 
@@ -31,11 +31,12 @@ Run as the node OS user. Do not use `sudo bash`; the scripts request sudo only f
 |---|---|---|
 | `2a` | Lists keys or creates/recovers a key through `worrelld keys` in text mode. Create/recover output stays visible until you press Enter, so the one-time mnemonic is not cleared by the menu redraw. Recovery does not print the supplied mnemonic back. | Sensitive local key operation. |
 | `2b` | Shows the consensus public key for validator creation. | Read-only. |
-| `2c` | Builds a temporary validator JSON and submits `tx staking create-validator` only after explicit confirmation. | On-chain transaction. |
+| `2c` | Prompts for validator moniker and metadata, including editable `details`, then builds a temporary validator JSON and submits `tx staking create-validator` only after explicit confirmation. | On-chain transaction. |
 | `2d` | Submits `tx slashing unjail` after explicit confirmation. | On-chain transaction. |
 | `2e` | Queries a validator's staking record. | Read-only. |
+| `2f` | Requires a reachable, synced local RPC; verifies the local key and `worrellvaloper1...` validator address; previews the account balance and validator record; then submits `tx staking delegate` only after explicit confirmation. The amount must be a positive integer with exactly one `uworrell` suffix. | On-chain transaction. |
 
-The menu does not automate faucet requests, delegation, or a Grand Valley validator choice. No verified Grand Valley Worrell validator or delegation endpoint was available during intake.
+After an operation finishes, Valley keeps its output visible and waits for `Press Enter to go back to main menu...` before redrawing the menu. This applies to installation, updates, snapshots, Cosmovisor actions, validator transactions, delegation, service controls, and key backups. The menu redraw may clear the terminal only after that acknowledgement. The menu does not automate faucet requests or choose a Grand Valley validator. Delegation is operator-directed through `2f`; no default validator or delegation endpoint is selected.
 
 ### 3. Node Management
 
@@ -43,7 +44,7 @@ The menu does not automate faucet requests, delegation, or a Grand Valley valida
 |---|---|---|
 | `3a` | Restarts the selected systemd service. | Short downtime. |
 | `3b` | Stops the selected systemd service. | Node offline until restarted. |
-| `3c` | Creates a verified validator-key backup, then deletes the selected node home after typed confirmation. | Destructive. Refuses deletion if backup fails. |
+| `3c` | Creates a verified validator-key backup, then deletes the selected node home after typed confirmation. Supports the normal-user home and root-only `/var/lib/worrell` home. | Destructive. Refuses deletion if backup fails. |
 | `3d` | Creates a mode-600 archive containing validator/node identity keys only. | Sensitive backup artifact. |
 
 ### 4. Endpoints
@@ -56,19 +57,20 @@ Shows navigation, key safety, port, backup, and validator reminders.
 
 ### 6. Exit
 
-Leaves the menu. The installer keeps the canonical `$HOME/go/bin` entry in `~/.bash_profile` idempotently, so repeated deployments leave one PATH export while preserving unrelated profile content. Run `source ~/.bash_profile` to load it in the current shell.
+Leaves the menu. For a normal node user, the installer keeps the canonical `$HOME/go/bin` entry in `~/.bash_profile` idempotently and writes controlled runtime settings to `$WORRELL_HOME/.worrell.env`. In root-only mode it uses `/usr/local/bin`, `/var/lib/worrell`, and the controlled env file without modifying `/root/.bash_profile`. Run `source ~/.bash_profile` only for the normal-user mode.
 
 ## Recommended first-time flow
 
 1. Review the installer and release checksum source.
-2. Run `1a` as a dedicated node OS user.
+2. Run `1a` as a dedicated node OS user. A root-only RPC host is also supported: the installer creates the dedicated `worrell` service account automatically.
 3. Choose a two-digit port prefix from `10` through `64` if the default ports are occupied. Prefix `26` keeps consensus ports at 26656/26657/26658; API/gRPC/Prometheus are still remapped consistently.
 4. Choose pruning when prompted: blank/`p` uses custom pruning with keep recent `100` and interval `20`; `a` uses archive mode and retains application-state history.
-5. Choose the install runtime: blank/`no` keeps the direct `worrelld` systemd service; `yes` installs pinned Cosmovisor with automatic downloads disabled. You can migrate a direct node later through `1g`.
+5. Choose the install runtime: blank/`no` keeps the direct `worrelld` systemd service; `yes` installs pinned Cosmovisor with automatic downloads disabled. You can migrate a direct node later through `1g`; root-only installs support the same lifecycle under `/var/lib/worrell`.
 6. Wait for `catching_up: false` in `1c`.
 7. Use the official faucet manually if testnet funds are needed.
-8. Create a validator only after checking the consensus key, balance, amount, commission, and minimum self-delegation.
-9. Monitor logs and signing information continuously.
+8. Create a validator only after checking the consensus key, balance, amount, commission, minimum self-delegation, and metadata/details.
+9. For delegation, wait for local `catching_up: false`, then use `2f` and review the key balance and validator record before confirming.
+10. Monitor logs and signing information continuously.
 
 ## Pruning
 
@@ -109,7 +111,8 @@ backup/
 - Never run two nodes with the same validator signing key.
 - Do not expose RPC, REST, gRPC, or Prometheus publicly unless you understand the security impact.
 - The menu offers guarded pruned snapshot application from reviewed providers; archive snapshots remain disabled until a provider is verified.
-- `create-validator` and `unjail` are real transactions. Review the preview before confirming.
+- `create-validator`, delegation, and `unjail` are real transactions. Review the complete preview, including validator details and the exact `uworrell` amount, before confirming.
+- Delegation uses Cosmos SDK `tx staking delegate`; there is no separate `stake` command. The menu rejects bare amounts, decimals, duplicate suffixes, and non-positive values.
 - The public endpoint list comes from upstream network metadata and may change.
 
 last updated by: John

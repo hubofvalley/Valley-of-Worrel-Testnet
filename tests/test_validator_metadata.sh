@@ -34,16 +34,16 @@ HOME="$fixture" WORRELL_HOME="$fixture/.worrell" bash -c '
   }
 
   run_case() {
-    local label="$1" input="$2" expected_identity="$3" expected_website="$4" expected_security="$5" json
+    local label="$1" input="$2" expected_identity="$3" expected_website="$4" expected_security="$5" expected_details="$6" json
     printf "%b" "$input" | create_validator >"$HOME/$label.out" 2>"$HOME/$label.err"
     json=$(awk "/Review validator JSON:/{found=1; next} found { print; if (\$0 == \"}\") exit }" "$HOME/$label.out")
-    jq -e --arg identity "$expected_identity" --arg website "$expected_website" --arg security "$expected_security" \
-      "(.identity == \$identity) and (.website == \$website) and (.security == \$security)" <<<"$json" >/dev/null
+    jq -e --arg identity "$expected_identity" --arg website "$expected_website" --arg security "$expected_security" --arg details "$expected_details" \
+      "(.identity == \$identity) and (.website == \$website) and (.security == \$security) and (.details == \$details)" <<<"$json" >/dev/null
   }
 
-  run_case blank "validator-key\n" "" "" ""
-  run_case supplied "validator-key\nSupplied moniker\nvalidator-id\nhttps://example.test\nops@example.test\n20000000000000\n0.05\n0.25\n0.01\n1000000\nno\n" \
-    validator-id https://example.test ops@example.test
+  run_case blank "validator-key\n" "" "" "" "Worrell testnet validator"
+  run_case supplied "validator-key\nSupplied moniker\nvalidator-id\nhttps://example.test\nops@example.test\nCustom validator details\n20000000\n0.05\n0.25\n0.01\n1000000\nno\n" \
+    validator-id https://example.test ops@example.test "Custom validator details"
 '
 
 echo 'Worrel validator metadata tests: PASS'

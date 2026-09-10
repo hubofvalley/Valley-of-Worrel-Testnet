@@ -1,24 +1,43 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[0;33m'; RESET='\033[0m'
 # shellcheck disable=SC1091
 source "$HOME/.bash_profile" 2>/dev/null || true
-export PATH="$HOME/go/bin:$PATH"
+set -u
+export PATH="$HOME/go/bin:/usr/local/bin:$PATH"
 
-readonly HOME_DIR="${WORRELL_HOME:-$HOME/.worrell}"
-readonly SERVICE="${WORRELL_SERVICE_NAME:-worrelld}"
+ROOT_MODE=no
+if [ "${EUID:-$(id -u)}" -eq 0 ]; then ROOT_MODE=yes; fi
+HOME_DIR="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell}" || printf '%s' "$HOME/.worrell")}"
+WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell.env}"
+if [ -r "$WORRELL_ENV_FILE" ]; then
+    # shellcheck disable=SC1090
+    source "$WORRELL_ENV_FILE"
+fi
+SERVICE="${WORRELL_SERVICE_NAME:-worrelld}"
+SERVICE_USER="${WORRELL_SERVICE_USER:-$([ "$ROOT_MODE" = yes ] && printf worrell || id -un)}"
+SERVICE_GROUP="${WORRELL_SERVICE_GROUP:-$SERVICE_USER}"
+BINARY_DIR="${WORRELL_BINARY_DIR:-$([ "$ROOT_MODE" = yes ] && printf '/usr/local/bin' || printf '%s' "$HOME/go/bin")}"
 readonly CHAIN_ID="${WORRELL_CHAIN_ID:-worrell-testnet-1}"
-readonly BINARY_DIR="$HOME/go/bin"
 readonly COSMOVISOR_VERSION="${WORRELL_COSMOVISOR_VERSION:-v1.7.3}"
-readonly COSMOVISOR_BIN="$BINARY_DIR/cosmovisor"
+COSMOVISOR_BIN="$BINARY_DIR/cosmovisor"
 readonly SYSTEMD_UNIT_DIR="${WORRELL_SYSTEMD_UNIT_DIR:-/etc/systemd/system}"
+if [ "$ROOT_MODE" = yes ]; then sudo() { "$@"; }; fi
+WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-true}"
+case "$WORRELL_UNSAFE_SKIP_BACKUP" in
+    true|false) ;;
+    *) echo -e "${RED}WORRELL_UNSAFE_SKIP_BACKUP must be true or false.${RESET}" >&2; exit 1 ;;
+esac
 
-[ "${EUID:-$(id -u)}" -ne 0 ] || { echo -e "${RED}Run as the node OS user, not root.${RESET}" >&2; exit 1; }
 [ -x "$BINARY_DIR/worrelld" ] || { echo -e "${RED}Missing $BINARY_DIR/worrelld. Install Worrell first.${RESET}" >&2; exit 1; }
 [ -d "$HOME_DIR/config" ] || { echo -e "${RED}Missing node home: $HOME_DIR${RESET}" >&2; exit 1; }
-case "$HOME_DIR" in "$HOME/.worrell"|"$HOME"/*) ;; *) echo -e "${RED}Refusing node home outside the current user's home: $HOME_DIR${RESET}" >&2; exit 1 ;; esac
-[ "$(stat -c %u "$HOME_DIR")" = "$(id -u)" ] || { echo -e "${RED}Node home must be owned by the current user: $HOME_DIR${RESET}" >&2; exit 1; }
+if [ "$ROOT_MODE" = yes ]; then
+    case "$HOME_DIR" in /var/lib/$SERVICE_USER|/var/lib/$SERVICE_USER/*) ;; *) echo -e "${RED}Refusing root-mode node home outside /var/lib/$SERVICE_USER: $HOME_DIR${RESET}" >&2; exit 1 ;; esac
+else
+    case "$HOME_DIR" in "$HOME/.worrell"|"$HOME"/*) ;; *) echo -e "${RED}Refusing node home outside the current user's home: $HOME_DIR${RESET}" >&2; exit 1 ;; esac
+    [ "$(stat -c %u "$HOME_DIR")" = "$(id -u)" ] || { echo -e "${RED}Node home must be owned by the current user: $HOME_DIR${RESET}" >&2; exit 1; }
+fi
 [ ! -e "$HOME_DIR/data/upgrade-info.json" ] || { echo -e "${RED}Pending data/upgrade-info.json found; review/stage the matching upgrade before migration.${RESET}" >&2; exit 1; }
 
 export DAEMON_NAME=worrelld
@@ -101,8 +120,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=$USER
-Group=$(id -gn)
+User=$SERVICE_USER
+Group=$SERVICE_GROUP
 WorkingDirectory=$HOME_DIR
 ExecStart=$COSMOVISOR_BIN run start --home $HOME_DIR
 StandardOutput=journal
@@ -115,20 +134,23 @@ Environment="DAEMON_HOME=$HOME_DIR"
 Environment="DAEMON_ALLOW_DOWNLOAD_BINARIES=false"
 Environment="DAEMON_RESTART_AFTER_UPGRADE=true"
 Environment="DAEMON_DATA_BACKUP_DIR=$HOME_DIR/cosmovisor/backup"
-Environment="UNSAFE_SKIP_BACKUP=false"
+Environment="UNSAFE_SKIP_BACKUP=$WORRELL_UNSAFE_SKIP_BACKUP"
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-touch "$profile"
-sed -i -E '/^export (DAEMON_NAME|DAEMON_HOME|DAEMON_DATA_BACKUP_DIR|WORRELL_COSMOVISOR_VERSION)=/d' "$profile"
-{
-    printf 'export DAEMON_NAME=%q\n' "$DAEMON_NAME"
-    printf 'export DAEMON_HOME=%q\n' "$DAEMON_HOME"
-    printf 'export DAEMON_DATA_BACKUP_DIR=%q\n' "$HOME_DIR/cosmovisor/backup"
-    printf 'export WORRELL_COSMOVISOR_VERSION=%q\n' "$COSMOVISOR_VERSION"
-} >> "$profile"
+if [ "$ROOT_MODE" != yes ]; then
+    touch "$profile"
+    sed -i -E '/^export (DAEMON_NAME|DAEMON_HOME|DAEMON_DATA_BACKUP_DIR|WORRELL_COSMOVISOR_VERSION|WORRELL_UNSAFE_SKIP_BACKUP)=/d' "$profile"
+    {
+        printf 'export DAEMON_NAME=%q\n' "$DAEMON_NAME"
+        printf 'export DAEMON_HOME=%q\n' "$DAEMON_HOME"
+        printf 'export DAEMON_DATA_BACKUP_DIR=%q\n' "$HOME_DIR/cosmovisor/backup"
+        printf 'export WORRELL_COSMOVISOR_VERSION=%q\n' "$COSMOVISOR_VERSION"
+        printf 'export WORRELL_UNSAFE_SKIP_BACKUP=%q\n' "$WORRELL_UNSAFE_SKIP_BACKUP"
+    } >> "$profile"
+fi
 
 sudo systemctl daemon-reload
 if [ "$autostart" = yes ]; then sudo systemctl enable "$SERVICE"; else sudo systemctl disable "$SERVICE" 2>/dev/null || true; fi
@@ -137,6 +159,9 @@ if [ "$was_active" = yes ]; then
     sudo systemctl is-active --quiet "$SERVICE"
 else
     sudo systemctl stop "$SERVICE"
+fi
+if [ "$ROOT_MODE" = yes ]; then
+    chown -R "$SERVICE_USER:$SERVICE_GROUP" "$HOME_DIR"
 fi
 migration_succeeded=yes
 

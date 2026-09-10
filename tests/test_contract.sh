@@ -38,6 +38,10 @@ grep -q 'cd "$workdir"' "$updater"
 grep -q 'SSH Access' "$installer"
 grep -q 'catching_up' "$menu"
 grep -q 'min-self-delegation' "$menu"
+grep -q 'tx staking delegate' "$menu"
+grep -q 'Delegate to validator' "$menu"
+! grep -q 'tx staking stake' "$menu"
+jq -e '.components[].capabilities | index("staking_tx")' "$repo/VALLEY.json" >/dev/null
 grep -q 'Type DELETE' "$menu"
 
 echo 'Worrel contract tests: PASS'
