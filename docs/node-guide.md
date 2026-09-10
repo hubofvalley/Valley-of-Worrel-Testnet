@@ -98,8 +98,10 @@ Create a validator only when `catching_up` is `false`. The Valley menu provides 
 
 ## Key and validator
 
+The text-mode key-creation command prints a new mnemonic only once. Write it down and store it offline before continuing; recovery accepts an existing mnemonic and does not print it back. Avoid terminal recording or transcript tools while creating keys.
+
 ```bash
-worrelld keys add <key-name> --home "$WORRELL_HOME"
+worrelld keys add <key-name> --home "$WORRELL_HOME" --output text
 worrelld keys show <key-name> -a --home "$WORRELL_HOME"
 worrelld query bank balances "$(worrelld keys show <key-name> -a --home "$WORRELL_HOME")" --home "$WORRELL_HOME"
 worrelld tendermint show-validator --home "$WORRELL_HOME"
