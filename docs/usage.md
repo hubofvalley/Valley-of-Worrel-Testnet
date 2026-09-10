@@ -56,7 +56,7 @@ Shows navigation, key safety, port, backup, and validator reminders.
 
 ### 6. Exit
 
-Leaves the menu. If the installer saved variables, run `source ~/.bash_profile` in a new shell.
+Leaves the menu. The installer keeps the canonical `$HOME/go/bin` entry in `~/.bash_profile` idempotently, so repeated deployments leave one PATH export while preserving unrelated profile content. Run `source ~/.bash_profile` to load it in the current shell.
 
 ## Recommended first-time flow
 
