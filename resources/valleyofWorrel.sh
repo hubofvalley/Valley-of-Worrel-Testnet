@@ -4,22 +4,45 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'
 YELLOW='\033[0;33m'; ORANGE='\033[38;5;214m'; RESET='\033[0m'
 # shellcheck disable=SC1091
 source "$HOME/.bash_profile" 2>/dev/null || true
-export PATH="$HOME/go/bin:$PATH"
+export PATH="$HOME/go/bin:/usr/local/bin:$PATH"
 
-WORRELL_HOME=${WORRELL_HOME:-$HOME/.worrell}
+if [ -z "${WORRELL_HOME:-}" ]; then
+    if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+        WORRELL_HOME="/var/lib/${WORRELL_SERVICE_USER:-worrell}"
+    else
+        WORRELL_HOME="$HOME/.worrell"
+    fi
+fi
+if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+else
+    WORRELL_ENV_FILE=${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell.env}
+fi
+if [ -r "$WORRELL_ENV_FILE" ]; then
+    # shellcheck disable=SC1090
+    source "$WORRELL_ENV_FILE"
+fi
 WORRELL_CHAIN_ID=${WORRELL_CHAIN_ID:-worrell-testnet-1}
 WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld}
+if [ -z "${WORRELL_SERVICE_USER:-}" ]; then
+    if [ "${EUID:-$(id -u)}" -eq 0 ]; then WORRELL_SERVICE_USER=worrell; else WORRELL_SERVICE_USER=$(id -un); fi
+fi
 WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-26}
 WORRELL_TARGET_VERSION=${WORRELL_TARGET_VERSION:-v0.1.2}
+WORRELL_UNSAFE_SKIP_BACKUP=${WORRELL_UNSAFE_SKIP_BACKUP:-true}
 WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://worrel-testnet-rpc.oshvank.xyz}
 WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
-readonly VALLEY_INSTALLER_SHA256="36f4c8c754b95a87a4f833d1a8c3785249706dde49522cb29617b35c103d518c"
-readonly VALLEY_UPDATER_SHA256="07ceef513c3acc65c6a4efa6540f92bf037ce66b16d524f424ca2c07e55a1b70"
-readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="c37898ad62f0cd8b031cfc4a19b129473ab56a457cb2ca4a3d5da32fa6334d90"
-readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="68414d1792a1f5bde935a5a1e9c14660a881b185ed5b95a199a9a68bb76a72a7"
-readonly VALLEY_SNAPSHOT_SHA256="60daf78203ba96a85dd174b6cacc949cc94a1e3f84603c725d827119e54ee3ed"
-readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/fd8f8563a95285fe5e3fea382310cebf7c67421b/resources"
+readonly VALLEY_INSTALLER_SHA256="d47a239010d10790279f77f5cf7b2c6ce59284534cad751e3a3123c5cda5f395"
+readonly VALLEY_UPDATER_SHA256="fa074336f167c6189e05847bc87e448994bfdc335003ec5c20cb2d47b2243c14"
+readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="7b384a62d99a8a068ede9ef3145eb2a5d97121b534f7b3c565170d011aa20b0d"
+readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="c2579a36e6a11fdba35b8d9c1ed700d72b9833f5e5f70a7d91abf085d6e54a31"
+readonly VALLEY_SNAPSHOT_SHA256="d63003514944d25b731d047c6bf01891c0a709955d4d76f2798358a542609061"
+readonly VALLEY_SCRIPT_COMMIT="53bf38fd2c477a690d8f9072c8d2def1d17d9e90"
+readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/53bf38fd2c477a690d8f9072c8d2def1d17d9e90/resources"
+
+export WORRELL_HOME WORRELL_ENV_FILE WORRELL_CHAIN_ID WORRELL_SERVICE_NAME
+export WORRELL_SERVICE_USER WORRELL_PORT_PREFIX WORRELL_TARGET_VERSION WORRELL_UNSAFE_SKIP_BACKUP
 
 LOGO=$(cat <<'EOF'
  __        __                    _
@@ -180,7 +203,12 @@ install_node() {
     echo -e "${YELLOW}REQUIREMENTS${RESET}: Ubuntu 22.04+, 2 vCPU, 4 GB RAM, 100 GB SSD, public P2P reachability."
     echo -e "${YELLOW}VALIDATOR RESPONSIBILITIES${RESET}: keep uptime, protect keys, update safely, and avoid double-signing."
     read -r -p "Proceed with installation/redeployment? (yes/no): " answer
-    if [[ "${answer,,}" != yes ]]; then echo -e "${RED}Installation cancelled.${RESET}"; menu; return; fi
+    if [[ "${answer,,}" != yes ]]; then
+        echo -e "${RED}Installation cancelled.${RESET}"
+        prompt_back
+        menu
+        return
+    fi
     while true; do
         echo -e "${CYAN}Pruning selection${RESET}"
         echo "pruned  = keep recent 100 states and prune every 20 blocks."
@@ -203,13 +231,27 @@ install_node() {
             *) echo -e "${RED}Please answer yes or no.${RESET}" ;;
         esac
     done
-    run_pinned_child worrelld_node_install_testnet.sh "$VALLEY_INSTALLER_SHA256" --pruning-mode "$pruning_mode" --service-mode "$service_mode"
+    if ! run_pinned_child worrelld_node_install_testnet.sh "$VALLEY_INSTALLER_SHA256" --pruning-mode "$pruning_mode" --service-mode "$service_mode"; then
+        echo -e "${RED}Installation failed. Review the output above before retrying.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    fi
     # Refresh the one-time service/home settings saved by the child installer.
     # shellcheck disable=SC1091
     source "$HOME/.bash_profile" 2>/dev/null || true
-    WORRELL_HOME=${WORRELL_HOME:-$HOME/.worrell}
+    if [ -z "${WORRELL_HOME:-}" ]; then
+        if [ "${EUID:-$(id -u)}" -eq 0 ]; then WORRELL_HOME="/var/lib/${WORRELL_SERVICE_USER:-worrell}"; else WORRELL_HOME="$HOME/.worrell"; fi
+    fi
     WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld}
     WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-26}
+    if [ -r "$WORRELL_ENV_FILE" ]; then
+        # shellcheck disable=SC1090
+        source "$WORRELL_ENV_FILE"
+        export WORRELL_HOME WORRELL_ENV_FILE WORRELL_SERVICE_NAME WORRELL_SERVICE_USER WORRELL_PORT_PREFIX
+    fi
+    echo -e "${GREEN}Installation flow finished. Review the output above before returning to the main menu.${RESET}"
+    prompt_back
     menu
 }
 
@@ -272,7 +314,13 @@ manage_cosmovisor() {
     echo "4. Back"
     read -r -p "Choose an option (1-4): " choice
     case "$choice" in
-        1) run_pinned_child cosmovisor_migration.sh "$VALLEY_COSMOVISOR_MIGRATION_SHA256"; menu ;;
+        1)
+            if ! run_pinned_child cosmovisor_migration.sh "$VALLEY_COSMOVISOR_MIGRATION_SHA256"; then
+                echo -e "${RED}Cosmovisor migration failed. Review the output above before retrying.${RESET}" >&2
+            fi
+            prompt_back
+            menu
+            ;;
         2) show_cosmovisor_status ;;
         3)
             if ! cosmovisor_active; then
@@ -281,16 +329,26 @@ manage_cosmovisor() {
             read -r -p "Release version (for example v0.1.2): " version
             read -r -p "On-chain upgrade name: " upgrade_name
             read -r -p "Emergency upgrade height (leave empty for governance plan): " upgrade_height
-            run_pinned_child worrelld_cosmovisor_upgrade.sh "$VALLEY_COSMOVISOR_UPGRADE_SHA256" "$version" "$upgrade_name" "$upgrade_height"
+            if ! run_pinned_child worrelld_cosmovisor_upgrade.sh "$VALLEY_COSMOVISOR_UPGRADE_SHA256" "$version" "$upgrade_name" "$upgrade_height"; then
+                echo -e "${RED}Cosmovisor upgrade staging failed. Review the output above before retrying.${RESET}" >&2
+            fi
+            prompt_back
             menu
             ;;
         4) menu ;;
-        *) echo -e "${RED}Invalid option.${RESET}"; menu ;;
+        *)
+            echo -e "${RED}Invalid option.${RESET}"
+            prompt_back
+            menu
+            ;;
     esac
 }
 
 apply_snapshot() {
-    run_pinned_child apply_snapshot.sh "$VALLEY_SNAPSHOT_SHA256"
+    if ! run_pinned_child apply_snapshot.sh "$VALLEY_SNAPSHOT_SHA256"; then
+        echo -e "${RED}Snapshot operation failed. Review the output above before retrying.${RESET}" >&2
+    fi
+    prompt_back
     menu
 }
 
@@ -310,7 +368,14 @@ update_node() {
     fi
     echo -e "${YELLOW}Updates the local worrelld binary after release checksum verification and briefly restarts the service.${RESET}"
     read -r -p "Proceed? (yes/no): " answer
-    if [[ "${answer,,}" == yes ]]; then run_pinned_child worrelld_update.sh "$VALLEY_UPDATER_SHA256"; fi
+    if [[ "${answer,,}" == yes ]]; then
+        if ! run_pinned_child worrelld_update.sh "$VALLEY_UPDATER_SHA256"; then
+            echo -e "${RED}Node update failed. Review the output above before retrying.${RESET}" >&2
+        fi
+    else
+        echo -e "${YELLOW}Update cancelled. No binary was changed.${RESET}"
+    fi
+    prompt_back
     menu
 }
 
@@ -331,7 +396,14 @@ show_status() {
     menu
 }
 
-show_logs() { sudo journalctl -u "$WORRELL_SERVICE_NAME" -fn 100 -o cat; menu; }
+show_logs() {
+    if ! sudo journalctl -u "$WORRELL_SERVICE_NAME" -fn 100 -o cat; then
+        echo -e "${RED}Could not follow the service journal. Review the service name and permissions.${RESET}" >&2
+    fi
+    echo -e "${YELLOW}Log follow ended. Review the output above before returning to the main menu.${RESET}"
+    prompt_back
+    menu
+}
 
 set_peers() {
     local cfg="$WORRELL_HOME/config/config.toml" choice peers
@@ -341,7 +413,12 @@ set_peers() {
     case "$choice" in
         1) peers="$WORRELL_PEERS" ;;
         2) read -r -p "persistent_peers (<id>@<host>:<port>,...): " peers ;;
-        *) menu; return ;;
+        *)
+            echo -e "${YELLOW}Peer configuration cancelled.${RESET}"
+            prompt_back
+            menu
+            return
+            ;;
     esac
     [ -n "$peers" ] || { echo -e "${RED}Peers cannot be empty.${RESET}"; prompt_back; menu; return; }
     sed -i -E "s|^[[:space:]]*persistent_peers[[:space:]]*=.*|persistent_peers = \"${peers//&/\\&}\"|" "$cfg"
@@ -375,7 +452,12 @@ list_or_create_key() {
             fi
             prompt_back
             ;;
-        *) menu; return ;;
+        *)
+            echo -e "${YELLOW}Key operation cancelled.${RESET}"
+            prompt_back
+            menu
+            return
+            ;;
     esac
     menu
 }
@@ -401,19 +483,30 @@ query_balance() {
 }
 
 create_validator() {
-    local name moniker identity website security amount rate max_rate max_change min_self tmp sync answer
+    local name moniker identity website security details amount rate max_rate max_change min_self tmp sync answer pubkey amount_coin
     sync=$(local_catching_up)
     [ "$sync" = false ] || { echo -e "${RED}Node is not confirmed synced (catching_up=$sync). Wait, then retry.${RESET}"; prompt_back; menu; return; }
     read -r -p "Key name: " name
-    worrell keys show "$name" -a --home "$WORRELL_HOME" >/dev/null
+    if ! worrell keys show "$name" -a --home "$WORRELL_HOME" >/dev/null; then
+        echo -e "${RED}Key '$name' was not found. No validator transaction was prepared.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    fi
     echo -e "${YELLOW}Current account balance:${RESET}"
-    worrell query bank balances "$(worrell keys show "$name" -a --home "$WORRELL_HOME")" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" || true
+    if ! worrell query bank balances "$(worrell keys show "$name" -a --home "$WORRELL_HOME")" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)"; then
+        echo -e "${RED}Could not query the account balance. Refusing to prepare a validator transaction.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    fi
     read -r -p "Validator moniker [Worrel-Grand-Valley]: " moniker; moniker=${moniker:-Worrel-Grand-Valley}
-    echo -e "${CYAN}Optional metadata: identity, website, and security email; press Enter to keep the displayed default [] (empty value).${RESET}"
+    echo -e "${CYAN}Optional metadata: identity, website, and security email; validator details are editable; press Enter to keep the displayed defaults.${RESET}"
     read -r -p "Validator identity []: " identity; identity=${identity:-}
     read -r -p "Validator website []: " website; website=${website:-}
     read -r -p "Validator security email []: " security; security=${security:-}
-    read -r -p "Self-delegation amount in uworrell [20000000000000]: " amount; amount=${amount:-20000000000000}
+    read -r -p "Validator details [Worrell testnet validator]: " details; details=${details:-Worrell testnet validator}
+    read -r -p "Self-delegation amount in uworrell [20000000]: " amount; amount=${amount:-20000000}
     read -r -p "Commission rate [0.05]: " rate; rate=${rate:-0.05}
     read -r -p "Commission max rate [0.25]: " max_rate; max_rate=${max_rate:-0.25}
     read -r -p "Commission max daily change [0.01]: " max_change; max_change=${max_change:-0.01}
@@ -425,13 +518,33 @@ create_validator() {
         return
     fi
     tmp=$(mktemp)
-    jq -n --arg pubkey "$(worrell tendermint show-validator --home "$WORRELL_HOME")" --arg amount "$amount" --arg moniker "$moniker" --arg identity "$identity" --arg website "$website" --arg security "$security" --arg rate "$rate" --arg max_rate "$max_rate" --arg max_change "$max_change" --arg min_self "$min_self" '{pubkey:($pubkey|fromjson),amount:$amount,moniker:$moniker,identity:$identity,website:$website,security:$security,details:"Worrell testnet validator", "commission-rate":$rate,"commission-max-rate":$max_rate,"commission-max-change-rate":$max_change,"min-self-delegation":$min_self}' > "$tmp"
+    # Cosmos SDK Coin values require the denomination; the prompt is in whole micro-units.
+    if ! pubkey=$(worrell tendermint show-validator --home "$WORRELL_HOME"); then
+        echo -e "${RED}Could not read the consensus public key. Refusing to prepare a validator transaction.${RESET}" >&2
+        rm -f "$tmp"
+        prompt_back
+        menu
+        return
+    fi
+    amount_coin="${amount}uworrell"
+    if ! jq -n --arg pubkey "$pubkey" --arg amount "$amount_coin" --arg moniker "$moniker" --arg identity "$identity" --arg website "$website" --arg security "$security" --arg details "$details" --arg rate "$rate" --arg max_rate "$max_rate" --arg max_change "$max_change" --arg min_self "$min_self" '{pubkey:($pubkey|fromjson),amount:$amount,moniker:$moniker,identity:$identity,website:$website,security:$security,details:$details, "commission-rate":$rate,"commission-max-rate":$max_rate,"commission-max-change-rate":$max_change,"min-self-delegation":$min_self}' > "$tmp"; then
+        echo -e "${RED}Could not build valid validator JSON. Refusing to prepare a transaction.${RESET}" >&2
+        rm -f "$tmp"
+        prompt_back
+        menu
+        return
+    fi
     echo -e "${YELLOW}Review validator JSON:${RESET}"; cat "$tmp"
     read -r -p "Submit on-chain create-validator transaction? (yes/no): " answer
     if [[ "${answer,,}" == yes ]]; then
-        worrell tx staking create-validator "$tmp" --from "$name" --chain-id "$WORRELL_CHAIN_ID" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes
+        if ! worrell tx staking create-validator "$tmp" --from "$name" --chain-id "$WORRELL_CHAIN_ID" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes; then
+            echo -e "${RED}Validator transaction failed. Review the error above.${RESET}" >&2
+        fi
+    else
+        echo -e "${GREEN}Validator transaction cancelled. No transaction was submitted.${RESET}"
     fi
     rm -f "$tmp"
+    prompt_back
     menu
 }
 
@@ -439,7 +552,143 @@ unjail() {
     local name answer
     read -r -p "Key name: " name
     read -r -p "Submit unjail transaction? (yes/no): " answer
-    if [[ "${answer,,}" == yes ]]; then worrell tx slashing unjail --from "$name" --chain-id "$WORRELL_CHAIN_ID" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes; fi
+    if [[ "${answer,,}" == yes ]]; then
+        if ! worrell tx slashing unjail --from "$name" --chain-id "$WORRELL_CHAIN_ID" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes; then
+            echo -e "${RED}Unjail transaction failed. Review the error above.${RESET}" >&2
+        fi
+    else
+        echo -e "${GREEN}Unjail transaction cancelled. No transaction was submitted.${RESET}"
+    fi
+    prompt_back
+    menu
+}
+
+valid_worrell_account_address() {
+    [[ "${1:-}" =~ ^worrell1[0-9a-z]+$ ]]
+}
+
+valid_worrell_valoper_address() {
+    [[ "${1:-}" =~ ^worrellvaloper1[0-9a-z]+$ ]]
+}
+
+valid_uworrell_amount() {
+    local amount="${1:-}" units
+    [[ "$amount" =~ ^[0-9]+uworrell$ ]] || return 1
+    units=${amount%uworrell}
+    [[ "$units" =~ [1-9] ]]
+}
+
+resolve_worrell_key_address() {
+    local name="${1:-}" address
+    [ -n "$name" ] || return 1
+    address=$(worrell keys show "$name" -a --home "$WORRELL_HOME" 2>/dev/null) || return 1
+    address=${address##*$'\n'}
+    address=${address//$'\r'/}
+    valid_worrell_account_address "$address" || return 1
+    printf '%s\n' "$address"
+}
+
+local_rpc_is_synced() {
+    local port response
+    port=$(get_local_rpc_port)
+    port=${port:-26657}
+    response=$(local_status "$port") || return 1
+    jq -e --arg chain "$WORRELL_CHAIN_ID" \
+        '.result.node_info.network == $chain and .result.sync_info.catching_up == false' \
+        <<<"$response" >/dev/null 2>&1
+}
+
+delegate_to_validator() {
+    local name validator amount key_address rpc balance_preview validator_preview answer port
+    port=$(get_local_rpc_port)
+    port=${port:-26657}
+    rpc="tcp://127.0.0.1:$port"
+    if ! local_rpc_is_synced; then
+        echo -e "${RED}The local Worrell RPC is unavailable or the node is not confirmed synced. Wait for catching_up=false, then retry.${RESET}"
+        prompt_back
+        menu
+        return
+    fi
+
+    read -r -p "Key name: " name
+    if ! key_address=$(resolve_worrell_key_address "$name"); then
+        echo -e "${RED}Key '$name' was not found or did not resolve to a valid worrell1... account address. Create or recover it with menu 2a first.${RESET}"
+        prompt_back
+        menu
+        return
+    fi
+
+    read -r -p "Validator operator address (worrellvaloper1...): " validator
+    if ! valid_worrell_valoper_address "$validator"; then
+        echo -e "${RED}Invalid validator operator address. Expected a worrellvaloper1... address.${RESET}"
+        prompt_back
+        menu
+        return
+    fi
+
+    read -r -p "Amount to delegate in uworrell (for example 1000000uworrell): " amount
+    if ! valid_uworrell_amount "$amount"; then
+        echo -e "${RED}Invalid delegation amount. Enter a positive integer with exactly one uworrell suffix, for example 1000000uworrell.${RESET}"
+        prompt_back
+        menu
+        return
+    fi
+
+    if ! balance_preview=$(worrell query bank balances "$key_address" --home "$WORRELL_HOME" --node "$rpc" --output json 2>/dev/null); then
+        echo -e "${RED}Could not query the key balance through the local RPC. Refusing to prepare a delegation.${RESET}"
+        prompt_back
+        menu
+        return
+    fi
+    if ! jq -e 'type == "object" and (.balances | type == "array")' <<<"$balance_preview" >/dev/null 2>&1; then
+        echo -e "${RED}The local RPC returned an invalid balance preview. Refusing to prepare a delegation.${RESET}"
+        prompt_back
+        menu
+        return
+    fi
+
+    if ! validator_preview=$(worrell query staking validator "$validator" --home "$WORRELL_HOME" --node "$rpc" --output json 2>/dev/null); then
+        echo -e "${RED}Could not query validator '$validator' through the local RPC. Refusing to prepare a delegation.${RESET}"
+        prompt_back
+        menu
+        return
+    fi
+    if ! jq -e --arg validator "$validator" \
+        'type == "object" and (.operator_address == $validator or .validator.operator_address == $validator)' \
+        <<<"$validator_preview" >/dev/null 2>&1; then
+        echo -e "${RED}The local RPC did not return the requested validator. Refusing to prepare a delegation.${RESET}"
+        prompt_back
+        menu
+        return
+    fi
+
+    echo -e "${YELLOW}Delegation transaction review:${RESET}"
+    echo "- From key: $name ($key_address)"
+    echo "- Validator: $validator"
+    echo "- Amount: $amount"
+    echo -e "${YELLOW}Current balance preview:${RESET}"
+    printf '%s\n' "$balance_preview"
+    echo -e "${YELLOW}Validator preview:${RESET}"
+    printf '%s\n' "$validator_preview"
+    read -r -p "Submit this delegation transaction? (yes/no): " answer
+    if [[ "${answer,,}" != yes ]]; then
+        echo -e "${GREEN}Delegation cancelled. No transaction was submitted.${RESET}"
+        prompt_back
+        menu
+        return
+    fi
+
+    if worrell tx staking delegate "$validator" "$amount" \
+        --from "$name" \
+        --chain-id "$WORRELL_CHAIN_ID" \
+        --home "$WORRELL_HOME" \
+        --node "$rpc" \
+        --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes; then
+        echo -e "${GREEN}Delegation transaction submitted successfully.${RESET}"
+    else
+        echo -e "${RED}Delegation transaction failed. Review the error above.${RESET}"
+    fi
+    prompt_back
     menu
 }
 
@@ -451,8 +700,25 @@ query_validator_status() {
     menu
 }
 
-restart_node() { sudo systemctl restart "$WORRELL_SERVICE_NAME"; menu; }
-stop_node() { sudo systemctl stop "$WORRELL_SERVICE_NAME"; menu; }
+restart_node() {
+    if sudo systemctl restart "$WORRELL_SERVICE_NAME"; then
+        echo -e "${GREEN}Node restart command completed.${RESET}"
+    else
+        echo -e "${RED}Node restart failed. Review service status and logs.${RESET}" >&2
+    fi
+    prompt_back
+    menu
+}
+
+stop_node() {
+    if sudo systemctl stop "$WORRELL_SERVICE_NAME"; then
+        echo -e "${GREEN}Node stop command completed.${RESET}"
+    else
+        echo -e "${RED}Node stop failed. Review service status and logs.${RESET}" >&2
+    fi
+    prompt_back
+    menu
+}
 
 backup_node() {
     local dest temp
@@ -478,17 +744,33 @@ delete_node() {
     local answer backup temp
     echo -e "${RED}BACK UP validator keys before deleting. This stops the service and removes the node home.${RESET}"
     read -r -p "Type DELETE to continue: " answer
-    [ "$answer" = DELETE ] || { menu; return; }
+    if [ "$answer" != DELETE ]; then
+        echo -e "${YELLOW}Deletion cancelled. No node data was changed.${RESET}"
+        prompt_back
+        menu
+        return
+    fi
     case "$WORRELL_HOME" in
-        "$HOME/.worrell"|"$HOME"/*) ;;
-        *) echo -e "${RED}Refusing deletion outside the current user's home.${RESET}"; menu; return ;;
+        "$HOME/.worrell"|"$HOME"/*|/var/lib/${WORRELL_SERVICE_USER:-worrell}) ;;
+        *)
+            echo -e "${RED}Refusing deletion outside the current user's home.${RESET}"
+            prompt_back
+            menu
+            return
+            ;;
     esac
-    [ -f "$WORRELL_HOME/config/priv_validator_key.json" ] || { echo -e "${RED}Signing key is missing; refusing deletion without a verified backup source.${RESET}"; menu; return; }
+    if [ ! -f "$WORRELL_HOME/config/priv_validator_key.json" ]; then
+        echo -e "${RED}Signing key is missing; refusing deletion without a verified backup source.${RESET}"
+        prompt_back
+        menu
+        return
+    fi
     backup="$HOME/worrell-validator-keys-$(date +%Y%m%d-%H%M%S).tar.gz"
     temp=$(mktemp -d)
     if ! cp -p "$WORRELL_HOME/config/priv_validator_key.json" "$temp/priv_validator_key.json" || ! tar -czf "$backup" -C "$temp" .; then
         rm -rf "$temp" "$backup"
         echo -e "${RED}Key backup failed; deletion refused.${RESET}"
+        prompt_back
         menu
         return
     fi
@@ -496,9 +778,10 @@ delete_node() {
     sudo systemctl disable --now "$WORRELL_SERVICE_NAME" 2>/dev/null || true
     sudo rm -f "/etc/systemd/system/${WORRELL_SERVICE_NAME}.service"
     rm -rf "$WORRELL_HOME"
-    sed -i -E '/^export WORRELL_(CHAIN_ID|HOME|SERVICE_NAME|PORT_PREFIX|MONIKER|TARGET_VERSION)=/d' "$HOME/.bash_profile" 2>/dev/null || true
+    sed -i -E '/^export WORRELL_(CHAIN_ID|HOME|SERVICE_NAME|PORT_PREFIX|MONIKER|TARGET_VERSION|UNSAFE_SKIP_BACKUP|ENV_FILE|SERVICE_USER)=/d' "$HOME/.bash_profile" 2>/dev/null || true
     sudo systemctl daemon-reload
     echo -e "${GREEN}Node removed. Key backup: $backup${RESET}"
+    prompt_back
     menu
 }
 
@@ -515,6 +798,7 @@ show_guidelines() {
     echo "- 2a manages keys; keep mnemonics offline. 2b shows consensus pubkey."
     echo "- 2c creates a validator transaction after showing a reviewable JSON file."
     echo "- 2d submits unjail only after the jail period and root cause are understood."
+    echo "- 2f previews balance and validator state, then submits tx staking delegate only after explicit confirmation. Use a positive integer with exactly one uworrell suffix."
     echo "- 3a/3b restart or stop the node. 3c deletes after a successful key backup and typed confirmation. 3d backs up validator/node keys only."
     echo "- Never run two instances with the same priv_validator_key.json."
     echo "- RPC/API/gRPC/Prometheus should stay private unless protected."
@@ -543,6 +827,7 @@ menu() {
     echo "   c. Create validator"
     echo "   d. Unjail validator"
     echo "   e. Query validator status"
+    echo "   f. Delegate to validator"
     echo -e "${GREEN}3. Node Management${RESET}"
     echo "   a. Restart node"
     echo "   b. Stop node"
@@ -577,6 +862,7 @@ menu() {
                 c) create_validator ;;
                 d) unjail ;;
                 e) query_validator_status ;;
+                f) delegate_to_validator ;;
                 *) menu ;;
             esac
             ;;

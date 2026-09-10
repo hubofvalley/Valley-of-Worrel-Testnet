@@ -43,7 +43,7 @@ Run the reviewed public launcher directly:
 bash <(curl -fsSL https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/main/resources/valleyofWorrel.sh)
 ```
 
-Run it as the OS user that owns the node. Do not run the launcher with `sudo`.
+Run it as the OS user that owns the node. On a root-only RPC host, the installer now creates a dedicated `worrell` system user and stores the node under `/var/lib/worrell`; do not wrap the launcher in `sudo` when a normal node user exists.
 
 ## Features
 
@@ -54,9 +54,9 @@ Run it as the OS user that owns the node. Do not run the launcher with `sudo`.
 - Official persistent peers, configurable two-digit local port prefix, and optional UFW.
 - Idempotent systemd service installation with ownership and backup checks.
 - Selectable pruned or archive application-state storage, optional direct `worrelld` or Cosmovisor-managed service, and guarded pruned snapshot application from ITRocket or Sychonix. Cosmovisor automatic binary downloads remain disabled.
-- Read-only status, logs, peer management, key/balance helpers, validator creation, and unjail flow.
+- Read-only status, logs, peer management, key/balance helpers, validator creation, guarded `tx staking delegate` delegation, and unjail flow.
 - Snapshot application is available through a guarded pruned-snapshot flow; archive snapshots remain disabled until a provider is verified.
-- No automatic faucet or transaction signing: funds and signing remain operator-controlled.
+- Faucet requests remain manual; validator, delegation, and unjail transactions require a local preview and explicit operator confirmation.
 
 ## Documentation
 

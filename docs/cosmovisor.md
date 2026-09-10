@@ -39,19 +39,21 @@ Select `Manage Cosmovisor` -> `Stage a verified upgrade binary`, then enter:
 - the exact governance upgrade plan name;
 - an emergency upgrade height only when explicitly coordinated.
 
-The helper downloads the architecture-specific release, verifies both the upstream `release_checksum` and Valley's pinned archive hash, and calls `cosmovisor add-upgrade`. Governance plan names may contain spaces; the helper does not impose a narrower SDK-incompatible grammar. It does not restart the service. For governance upgrades, the plan name must match the on-chain name exactly. Never enable automatic binary downloads on a validator.
+The helper downloads the architecture-specific release, verifies it against the upstream `release_checksum`, and calls `cosmovisor add-upgrade`. Valley verifies the immutable helper script separately before execution; it does not maintain a fixed hash for every arbitrary future Worrell release. Governance plan names may contain spaces; the helper does not impose a narrower SDK-incompatible grammar. It does not restart the service. For governance upgrades, the plan name must match the on-chain name exactly. Never enable automatic binary downloads on a validator.
 
 ## Layout and environment
 
 ```text
-~/.worrell/cosmovisor/
+$WORRELL_HOME/cosmovisor/
 ├── current -> genesis (or upgrades/<name>)
 ├── genesis/bin/worrelld
 ├── upgrades/<name>/bin/worrelld
 └── backup/
 ```
 
-The service sets `DAEMON_NAME=worrelld`, `DAEMON_HOME=~/.worrell`, `DAEMON_ALLOW_DOWNLOAD_BINARIES=false`, `DAEMON_RESTART_AFTER_UPGRADE=true`, `DAEMON_DATA_BACKUP_DIR=~/.worrell/cosmovisor/backup`, and `UNSAFE_SKIP_BACKUP=false`.
+For a normal node user, `$WORRELL_HOME` is `~/.worrell`; in root-only mode it is `/var/lib/worrell`.
+
+The service sets `DAEMON_NAME=worrelld`, `DAEMON_HOME=$WORRELL_HOME`, `DAEMON_ALLOW_DOWNLOAD_BINARIES=false`, `DAEMON_RESTART_AFTER_UPGRADE=true`, `DAEMON_DATA_BACKUP_DIR=$WORRELL_HOME/cosmovisor/backup`, and `UNSAFE_SKIP_BACKUP=true` by default as requested for this deployment. This skips Cosmovisor's application-data backup during upgrades. Set `WORRELL_UNSAFE_SKIP_BACKUP=false` before installation or migration when rollback protection is required, especially on validator nodes.
 
 ## Recovery
 

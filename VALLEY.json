@@ -13,7 +13,7 @@
       "kind": "cosmos",
       "binary": "worrelld",
       "service": "worrelld.service",
-      "home": "$HOME/.worrell",
+      "home": "$HOME/.worrell (or /var/lib/worrell in root-only mode)",
       "config_paths": [
         "$HOME/.worrell/config/config.toml",
         "$HOME/.worrell/config/app.toml"
@@ -27,6 +27,7 @@
         "peers",
         "keys",
         "validator_tx",
+        "staking_tx",
         "snapshot",
         "pruning",
         "cosmovisor",

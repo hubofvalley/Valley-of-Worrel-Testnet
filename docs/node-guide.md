@@ -33,7 +33,7 @@ export PATH="$HOME/go/bin:$PATH"
 worrelld version --long | head -5
 ```
 
-The Valley installer persists this canonical path as one `export PATH="$HOME/go/bin:$PATH"` entry in `~/.bash_profile`; re-running it removes prior copies before saving the entry again. Source the profile after installation with `source ~/.bash_profile`.
+The Valley installer persists this canonical path as one `export PATH="$HOME/go/bin:$PATH"` entry in `~/.bash_profile`; re-running it removes prior copies before saving the entry again. Source the profile after installation with `source ~/.bash_profile`. On a root-only RPC host, it instead installs the binary under `/usr/local/bin`, creates the unprivileged `worrell` service account, and uses `/var/lib/worrell` without modifying root's shell profile.
 
 Use the matching `linux_arm64` asset on ARM. A source build requires Go `1.25.10+`, git, make, and build-essential:
 
@@ -109,9 +109,9 @@ worrelld query bank balances "$(worrelld keys show <key-name> -a --home "$WORREL
 worrelld tendermint show-validator --home "$WORRELL_HOME"
 ```
 
-The upstream example uses:
+The Valley default uses 20 WORRELL:
 
-- amount: `20000000000000uworrell`
+- amount: `20000000uworrell`
 - commission rate: `0.05`
 - commission max rate: `0.25`
 - commission max change rate: `0.01`
@@ -124,6 +124,27 @@ worrelld tx staking create-validator validator.json \
   --from <key-name> --chain-id worrell-testnet-1 --home "$WORRELL_HOME" \
   --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes
 ```
+
+### Delegate to a validator
+
+Valley option `2f` uses the Cosmos SDK `tx staking delegate` command. It first
+requires a reachable local RPC with `catching_up: false`, resolves the local
+key to a `worrell1...` account, validates the target
+`worrellvaloper1...` address, and previews both the account balance and the
+validator record. It submits nothing until you type `yes` at the final review.
+
+The amount is an integer number of micro-units with exactly one `uworrell`
+suffix. There is no separate `stake` command:
+
+```bash
+worrelld tx staking delegate <worrellvaloper1...> 1000000uworrell \
+  --from <key-name> --chain-id worrell-testnet-1 --home "$WORRELL_HOME" \
+  --node "tcp://127.0.0.1:26657" \
+  --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes
+```
+
+Review the returned balance, validator record, target address, and exact
+amount. Testnet funds and delegation remain operator-controlled.
 
 Testnet faucet requests are manual and rate-limited by upstream. Never put a mnemonic or private key in a script, URL, issue, or chat.
 

@@ -1,19 +1,43 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'
 YELLOW='\033[0;33m'; ORANGE='\033[38;5;214m'; RESET='\033[0m'
 
 # shellcheck disable=SC1091
 source "$HOME/.bash_profile" 2>/dev/null || true
-export PATH="$HOME/go/bin:$PATH"
+set -u
+export PATH="$HOME/go/bin:/usr/local/bin:$PATH"
 
 readonly WORRELL_VERSION="${WORRELL_TARGET_VERSION:-v0.1.2}"
 readonly CHAIN_ID="worrell-testnet-1"
-readonly HOME_DIR="${WORRELL_HOME:-$HOME/.worrell}"
-readonly BINARY_DIR="$HOME/go/bin"
+ROOT_MODE=no
+SERVICE_USER="${WORRELL_SERVICE_USER:-${USER:-$(id -un)}}"
+if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+    ROOT_MODE=yes
+    SERVICE_USER="${WORRELL_SERVICE_USER:-worrell}"
+    HOME_DIR="${WORRELL_HOME:-/var/lib/$SERVICE_USER}"
+    BINARY_DIR="${WORRELL_BINARY_DIR:-/usr/local/bin}"
+else
+    HOME_DIR="${WORRELL_HOME:-$HOME/.worrell}"
+    BINARY_DIR="${WORRELL_BINARY_DIR:-$HOME/go/bin}"
+fi
+SERVICE_GROUP="${WORRELL_SERVICE_GROUP:-$SERVICE_USER}"
+if [ "$ROOT_MODE" = yes ]; then
+    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+else
+    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell.env}"
+fi
 readonly COSMOVISOR_VERSION="${WORRELL_COSMOVISOR_VERSION:-v1.7.3}"
-readonly COSMOVISOR_BIN="$BINARY_DIR/cosmovisor"
+COSMOVISOR_BIN="$BINARY_DIR/cosmovisor"
+WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-true}"
+if [ "$ROOT_MODE" = yes ]; then
+    sudo() { "$@"; }
+fi
+case "$WORRELL_UNSAFE_SKIP_BACKUP" in
+    true|false) ;;
+    *) echo -e "${RED}WORRELL_UNSAFE_SKIP_BACKUP must be true or false.${RESET}" >&2; exit 1 ;;
+esac
 readonly GENESIS_URL="https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-1/genesis.json"
 readonly GENESIS_SHA256="a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd"
 readonly PEERS="bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656"
@@ -58,10 +82,36 @@ prompt_default() {
 valid_prefix() { [[ "$1" =~ ^[0-9]{2}$ ]] && ((10#$1 >= 10 && 10#$1 <= 64)); }
 valid_service() { [[ "$1" =~ ^[A-Za-z0-9_.@-]+$ ]]; }
 
+write_runtime_env() {
+    local env_file="$WORRELL_ENV_FILE"
+    if [ "$ROOT_MODE" = yes ]; then
+        install -d -m 0755 /etc/worrelld
+        install -m 0644 /dev/null "$env_file"
+    else
+        install -d -m 0750 "$HOME_DIR"
+        umask 077
+    fi
+    cat > "$env_file" <<EOF
+export WORRELL_HOME=$(printf '%q' "$HOME_DIR")
+export WORRELL_ENV_FILE=$(printf '%q' "$env_file")
+export WORRELL_BINARY_DIR=$(printf '%q' "$BINARY_DIR")
+export WORRELL_SERVICE_USER=$(printf '%q' "$SERVICE_USER")
+export WORRELL_SERVICE_GROUP=$(printf '%q' "$SERVICE_GROUP")
+export WORRELL_SERVICE_NAME=$(printf '%q' "$WORRELL_SERVICE_NAME")
+export WORRELL_PORT_PREFIX=$(printf '%q' "$PORT_PREFIX")
+export WORRELL_UNSAFE_SKIP_BACKUP=$(printf '%q' "$WORRELL_UNSAFE_SKIP_BACKUP")
+EOF
+    if [ "$ROOT_MODE" = yes ]; then
+        chown root:root "$env_file"
+    fi
+}
+
 save_env() {
-    local profile="$HOME/.bash_profile" path_line tmp line
+    local profile="$HOME/.bash_profile" path_line tmp line skip_backup
+    skip_backup="${WORRELL_UNSAFE_SKIP_BACKUP:-true}"
+    [ "${ROOT_MODE:-no}" = yes ] && return 0
     touch "$profile"
-    sed -i -E '/^export WORRELL_(CHAIN_ID|HOME|SERVICE_NAME|PORT_PREFIX|MONIKER|TARGET_VERSION)=/d' "$profile"
+    sed -i -E '/^export WORRELL_(CHAIN_ID|HOME|SERVICE_NAME|PORT_PREFIX|MONIKER|TARGET_VERSION|UNSAFE_SKIP_BACKUP)=/d' "$profile"
     path_line="export PATH=\"$BINARY_DIR:\$PATH\""
     tmp=$(mktemp)
     while IFS= read -r line || [ -n "$line" ]; do
@@ -79,8 +129,25 @@ save_env() {
         printf 'export WORRELL_PORT_PREFIX=%q\n' "$PORT_PREFIX"
         printf 'export WORRELL_MONIKER=%q\n' "$MONIKER"
         printf 'export WORRELL_TARGET_VERSION=%q\n' "$WORRELL_VERSION"
+        printf 'export WORRELL_UNSAFE_SKIP_BACKUP=%q\n' "$skip_backup"
         printf 'export PATH="$HOME/go/bin:$PATH"\n'
     } >> "$profile"
+}
+
+prepare_service_account() {
+    if [ "$ROOT_MODE" = yes ]; then
+        valid_service "$SERVICE_USER" || { echo -e "${RED}Invalid service user: $SERVICE_USER${RESET}" >&2; return 1; }
+        if ! id "$SERVICE_USER" >/dev/null 2>&1; then
+            useradd --system --home-dir "$HOME_DIR" --no-create-home --shell /usr/sbin/nologin "$SERVICE_USER"
+        fi
+        SERVICE_GROUP=$(id -gn "$SERVICE_USER")
+        install -d -o "$SERVICE_USER" -g "$SERVICE_GROUP" "$HOME_DIR"
+    else
+        [ "$SERVICE_USER" = "$(id -un)" ] || {
+            echo -e "${RED}WORRELL_SERVICE_USER must match the current non-root user.${RESET}" >&2
+            return 1
+        }
+    fi
 }
 
 remap_config() {
@@ -208,14 +275,14 @@ install_prebuilt() {
 }
 
 install_from_source() {
-    local src="$HOME/worrell-src"
+    local src="${WORRELL_SOURCE_DIR:-$HOME_DIR/worrell-src}"
     command -v go >/dev/null 2>&1 || { echo -e "${RED}Go 1.25.10+ is required for source builds.${RESET}"; return 1; }
     go_version=$(go version | awk '{print $3}' | sed 's/^go//')
     [ "$(printf '%s\n' 1.25.10 "$go_version" | sort -V | head -1)" = "1.25.10" ] || { echo -e "${RED}Go $go_version is too old; Go 1.25.10+ is required.${RESET}"; return 1; }
     if [ -d "$src/.git" ]; then git -C "$src" fetch --tags --quiet; else git clone https://github.com/worrellchain/worrell.git "$src"; fi
     git -C "$src" checkout "$WORRELL_VERSION"
-    make -C "$src" install
-    [ -x "$HOME/go/bin/worrelld" ]
+    GOBIN="$BINARY_DIR" make -C "$src" install
+    [ -x "$BINARY_DIR/worrelld" ]
 }
 
 install_cosmovisor() {
@@ -278,14 +345,18 @@ SSH_PORT=$(prompt_default 'SSH TCP port to preserve in UFW' '22')
 read -r -p "Use prebuilt ${WORRELL_VERSION} binary? (yes/no) [yes]: " USE_PREBUILT
 USE_PREBUILT=${USE_PREBUILT:-yes}
 
-if [ "${EUID:-$(id -u)}" -eq 0 ]; then
-    echo -e "${RED}Run this installer as the node OS user, not root.${RESET}" >&2
-    exit 1
+if [ "$ROOT_MODE" = yes ]; then
+    case "$HOME_DIR" in
+        /var/lib/$SERVICE_USER|/var/lib/$SERVICE_USER/*) ;;
+        *) echo -e "${RED}Root-mode node home must stay under /var/lib/$SERVICE_USER: $HOME_DIR${RESET}" >&2; exit 1 ;;
+    esac
+else
+    case "$HOME_DIR" in
+        "$HOME/.worrell"|"$HOME"/*) ;;
+        *) echo -e "${RED}Refusing node home outside the current user's home: $HOME_DIR${RESET}" >&2; exit 1 ;;
+    esac
 fi
-case "$HOME_DIR" in
-    "$HOME/.worrell"|"$HOME"/*) ;;
-    *) echo -e "${RED}Refusing node home outside the current user's home: $HOME_DIR${RESET}" >&2; exit 1 ;;
-esac
+prepare_service_account
 
 sudo apt-get update
 sudo apt-get install -y curl git jq build-essential wget lz4 unzip openssl ca-certificates
@@ -327,7 +398,7 @@ Environment="DAEMON_HOME=$HOME_DIR"
 Environment="DAEMON_ALLOW_DOWNLOAD_BINARIES=false"
 Environment="DAEMON_RESTART_AFTER_UPGRADE=true"
 Environment="DAEMON_DATA_BACKUP_DIR=$HOME_DIR/cosmovisor/backup"
-Environment="UNSAFE_SKIP_BACKUP=false"
+Environment="UNSAFE_SKIP_BACKUP=$WORRELL_UNSAFE_SKIP_BACKUP"
 ENVEOF
 )
 else
@@ -343,8 +414,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=$USER
-Group=$(id -gn)
+User=$SERVICE_USER
+Group=$SERVICE_GROUP
 WorkingDirectory=$HOME_DIR
 ExecStart=$SERVICE_EXEC_START
 Restart=on-failure
@@ -360,6 +431,10 @@ if [ "${ENABLE_UFW,,}" = "yes" ]; then
     sudo ufw allow "${PORT_PREFIX}656/tcp" comment "Worrell Testnet P2P"
     sudo ufw --force enable
 fi
+if [ "$ROOT_MODE" = yes ]; then
+    chown -R "$SERVICE_USER:$SERVICE_GROUP" "$HOME_DIR"
+fi
+write_runtime_env
 save_env
 sudo systemctl daemon-reload
 sudo systemctl enable --now "$WORRELL_SERVICE_NAME"
@@ -369,6 +444,7 @@ else
     echo -e "${RED}Service did not become active. Inspect: sudo journalctl -u ${WORRELL_SERVICE_NAME} -n 100 --no-pager${RESET}" >&2
     exit 1
 fi
+echo -e "${CYAN}Service user:${RESET} $SERVICE_USER"
 echo -e "${CYAN}Home:${RESET} $HOME_DIR"
 echo -e "${CYAN}Pruning:${RESET} $PRUNING_MODE"
 echo -e "${CYAN}RPC:${RESET} http://127.0.0.1:${PORT_PREFIX}657"

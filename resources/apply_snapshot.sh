@@ -1,16 +1,36 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'
 YELLOW='\033[0;33m'; ORANGE='\033[38;5;214m'; RESET='\033[0m'
+
+# Load the controlled installer environment without making root mode depend on
+# /root/.bash_profile. Profile loading is retained for normal-user PATH setup.
+source "$HOME/.bash_profile" 2>/dev/null || true
+set -u
+export PATH="$HOME/go/bin:/usr/local/bin:$PATH"
+ROOT_MODE=no
+if [ "${EUID:-$(id -u)}" -eq 0 ]; then ROOT_MODE=yes; fi
 
 # Provider sources reviewed on 2026-09-09. ITRocket uses live metadata because
 # its filename rotates; Sychonix publishes a concrete rolling archive URL.
 readonly ITROCKET_META_URL="https://server-3.itrocket.net/testnet/worrell/.current_state.json"
 readonly ITROCKET_BASE_URL="https://server-3.itrocket.net/testnet/worrell"
 readonly SYCHONIX_SNAPSHOT_URL="https://snapshot.sychonix.com/testnet/worrell/worrell-snapshot.tar.lz4"
-readonly WORRELL_HOME="${WORRELL_HOME:-$HOME/.worrell}"
-readonly WORRELL_SERVICE_NAME="${WORRELL_SERVICE_NAME:-worrelld}"
+WORRELL_HOME="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell}" || printf '%s' "$HOME/.worrell")}"
+if [ "$ROOT_MODE" = yes ]; then
+    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+else
+    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell.env}"
+fi
+if [ -r "$WORRELL_ENV_FILE" ]; then
+    # shellcheck disable=SC1090
+    source "$WORRELL_ENV_FILE"
+fi
+WORRELL_SERVICE_NAME="${WORRELL_SERVICE_NAME:-worrelld}"
+WORRELL_SERVICE_USER="${WORRELL_SERVICE_USER:-$([ "$ROOT_MODE" = yes ] && printf worrell || id -un)}"
+WORRELL_SERVICE_GROUP="${WORRELL_SERVICE_GROUP:-$WORRELL_SERVICE_USER}"
+if [ "$ROOT_MODE" = yes ]; then sudo() { "$@"; }; fi
 
 prompt_back_or_continue() { read -r -p "Press Enter to continue..."; }
 
@@ -125,6 +145,11 @@ extract_snapshot() {
     rm -f "$target/data/priv_validator_state.json" "$target/data/upgrade-info.json"
 }
 
+fix_node_ownership() {
+    [ "$ROOT_MODE" = yes ] || return 0
+    chown -R "$WORRELL_SERVICE_USER:$WORRELL_SERVICE_GROUP" "$1"
+}
+
 service_is_inactive() {
     local state
     state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
@@ -174,9 +199,11 @@ rollback_snapshot() {
     rm -rf "$old_data"
     if [ -d "$rollback_data" ]; then mv "$rollback_data" "$old_data"; fi
 
+    fix_node_ownership "$old_data"
     if [ "$service_started" = yes ]; then
         if [ "$fresh_state_valid" = yes ]; then
             install -m 0600 "$fresh_state" "$old_data/priv_validator_state.json"
+            fix_node_ownership "$old_data"
             restore_prior_service_state "$was_active" || true
         else
             echo -e "${RED}Fresh signer state was missing, invalid, or regressed. Validator remains offline for manual recovery.${RESET}" >&2
@@ -271,10 +298,12 @@ apply_selected_snapshot() (
         rollback_snapshot "$old_data" "$rollback_data" "$was_active"
         return 1
     fi
+    fix_node_ownership "$old_data"
     if ! install -m 0600 "$state_backup" "$old_data/priv_validator_state.json"; then
         rollback_snapshot "$old_data" "$rollback_data" "$was_active"
         return 1
     fi
+    fix_node_ownership "$old_data"
     if ! sync; then
         rollback_snapshot "$old_data" "$rollback_data" "$was_active"
         return 1
