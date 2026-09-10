@@ -29,7 +29,7 @@ Run as the node OS user. Do not use `sudo bash`; the scripts request sudo only f
 
 | Option | Behaviour | Risk |
 |---|---|---|
-| `2a` | Lists keys or creates/recovers a key through `worrelld keys`. | Sensitive local key operation. |
+| `2a` | Lists keys or creates/recovers a key through `worrelld keys` in text mode. Create/recover output stays visible until you press Enter, so the one-time mnemonic is not cleared by the menu redraw. Recovery does not print the supplied mnemonic back. | Sensitive local key operation. |
 | `2b` | Shows the consensus public key for validator creation. | Read-only. |
 | `2c` | Builds a temporary validator JSON and submits `tx staking create-validator` only after explicit confirmation. | On-chain transaction. |
 | `2d` | Submits `tx slashing unjail` after explicit confirmation. | On-chain transaction. |
@@ -105,7 +105,7 @@ backup/
 
 ## Safety
 
-- Use testnet-only keys and keep mnemonics offline.
+- Use testnet-only keys and keep mnemonics offline. When creating a key through `2a`, copy the mnemonic before pressing Enter; the binary displays it only once and the Valley does not save or upload it.
 - Never run two nodes with the same validator signing key.
 - Do not expose RPC, REST, gRPC, or Prometheus publicly unless you understand the security impact.
 - The menu offers guarded pruned snapshot application from reviewed providers; archive snapshots remain disabled until a provider is verified.

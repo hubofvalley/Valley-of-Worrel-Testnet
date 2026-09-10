@@ -357,8 +357,24 @@ list_or_create_key() {
     read -r -p "Choose: " action
     case "$action" in
         1) worrell keys list --home "$WORRELL_HOME"; prompt_back ;;
-        2) read -r -p "Key name: " name; worrell keys add "$name" --home "$WORRELL_HOME" ;;
-        3) read -r -p "Key name: " name; worrell keys add "$name" --recover --home "$WORRELL_HOME" ;;
+        2)
+            read -r -p "Key name: " name
+            echo -e "${YELLOW}A new mnemonic will be shown once below. Save it offline; Valley does not store it.${RESET}"
+            if worrell keys add "$name" --home "$WORRELL_HOME" --output text; then
+                echo -e "${YELLOW}Confirm the mnemonic shown above is safely backed up before leaving this screen.${RESET}"
+            else
+                echo -e "${RED}Key creation did not complete cleanly. Check whether the key exists before retrying.${RESET}" >&2
+            fi
+            prompt_back
+            ;;
+        3)
+            read -r -p "Key name: " name
+            echo -e "${YELLOW}Recovery uses your existing mnemonic; worrelld will not print it back.${RESET}"
+            if ! worrell keys add "$name" --recover --home "$WORRELL_HOME" --output text; then
+                echo -e "${RED}Key recovery did not complete cleanly. Check the key name and mnemonic before retrying.${RESET}" >&2
+            fi
+            prompt_back
+            ;;
         *) menu; return ;;
     esac
     menu
