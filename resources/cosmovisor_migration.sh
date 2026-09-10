@@ -152,6 +152,9 @@ if [ "$ROOT_MODE" != yes ]; then
     } >> "$profile"
 fi
 
+if [ "$ROOT_MODE" = yes ]; then
+    chown -R "$SERVICE_USER:$SERVICE_GROUP" "$HOME_DIR"
+fi
 sudo systemctl daemon-reload
 if [ "$autostart" = yes ]; then sudo systemctl enable "$SERVICE"; else sudo systemctl disable "$SERVICE" 2>/dev/null || true; fi
 if [ "$was_active" = yes ]; then
@@ -159,9 +162,6 @@ if [ "$was_active" = yes ]; then
     sudo systemctl is-active --quiet "$SERVICE"
 else
     sudo systemctl stop "$SERVICE"
-fi
-if [ "$ROOT_MODE" = yes ]; then
-    chown -R "$SERVICE_USER:$SERVICE_GROUP" "$HOME_DIR"
 fi
 migration_succeeded=yes
 

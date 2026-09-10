@@ -94,6 +94,9 @@ fi
 args=(add-upgrade "$UPGRADE_NAME" "$workdir/worrelld")
 [ -z "$UPGRADE_HEIGHT" ] || args+=(--upgrade-height "$UPGRADE_HEIGHT")
 "$COSMOVISOR_BIN" "${args[@]}"
+if [ "$ROOT_MODE" = yes ]; then
+    chown -R "${WORRELL_SERVICE_USER:-worrell}:${WORRELL_SERVICE_GROUP:-${WORRELL_SERVICE_USER:-worrell}}" "$HOME_DIR"
+fi
 
 echo -e "${GREEN}Cosmovisor upgrade binary staged successfully.${RESET}"
 echo -e "${CYAN}Upgrade:${RESET} $UPGRADE_NAME"
