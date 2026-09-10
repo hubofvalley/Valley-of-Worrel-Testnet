@@ -401,7 +401,7 @@ query_balance() {
 }
 
 create_validator() {
-    local name moniker amount rate max_rate max_change min_self tmp sync answer
+    local name moniker identity website security amount rate max_rate max_change min_self tmp sync answer
     sync=$(local_catching_up)
     [ "$sync" = false ] || { echo -e "${RED}Node is not confirmed synced (catching_up=$sync). Wait, then retry.${RESET}"; prompt_back; menu; return; }
     read -r -p "Key name: " name
@@ -409,6 +409,10 @@ create_validator() {
     echo -e "${YELLOW}Current account balance:${RESET}"
     worrell query bank balances "$(worrell keys show "$name" -a --home "$WORRELL_HOME")" --home "$WORRELL_HOME" --node "tcp://127.0.0.1:$(get_local_rpc_port)" || true
     read -r -p "Validator moniker [Worrel-Grand-Valley]: " moniker; moniker=${moniker:-Worrel-Grand-Valley}
+    echo -e "${CYAN}Optional metadata: identity, website, and security email; press Enter to keep the displayed default [] (empty value).${RESET}"
+    read -r -p "Validator identity []: " identity; identity=${identity:-}
+    read -r -p "Validator website []: " website; website=${website:-}
+    read -r -p "Validator security email []: " security; security=${security:-}
     read -r -p "Self-delegation amount in uworrell [20000000000000]: " amount; amount=${amount:-20000000000000}
     read -r -p "Commission rate [0.05]: " rate; rate=${rate:-0.05}
     read -r -p "Commission max rate [0.25]: " max_rate; max_rate=${max_rate:-0.25}
@@ -421,7 +425,7 @@ create_validator() {
         return
     fi
     tmp=$(mktemp)
-    jq -n --arg pubkey "$(worrell tendermint show-validator --home "$WORRELL_HOME")" --arg amount "$amount" --arg moniker "$moniker" --arg rate "$rate" --arg max_rate "$max_rate" --arg max_change "$max_change" --arg min_self "$min_self" '{pubkey:($pubkey|fromjson),amount:$amount,moniker:$moniker,identity:"",website:"",security:"",details:"Worrell testnet validator", "commission-rate":$rate,"commission-max-rate":$max_rate,"commission-max-change-rate":$max_change,"min-self-delegation":$min_self}' > "$tmp"
+    jq -n --arg pubkey "$(worrell tendermint show-validator --home "$WORRELL_HOME")" --arg amount "$amount" --arg moniker "$moniker" --arg identity "$identity" --arg website "$website" --arg security "$security" --arg rate "$rate" --arg max_rate "$max_rate" --arg max_change "$max_change" --arg min_self "$min_self" '{pubkey:($pubkey|fromjson),amount:$amount,moniker:$moniker,identity:$identity,website:$website,security:$security,details:"Worrell testnet validator", "commission-rate":$rate,"commission-max-rate":$max_rate,"commission-max-change-rate":$max_change,"min-self-delegation":$min_self}' > "$tmp"
     echo -e "${YELLOW}Review validator JSON:${RESET}"; cat "$tmp"
     read -r -p "Submit on-chain create-validator transaction? (yes/no): " answer
     if [[ "${answer,,}" == yes ]]; then
