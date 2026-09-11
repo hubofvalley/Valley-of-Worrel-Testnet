@@ -29,7 +29,7 @@ HOME="$fixture/home" SAVE_ENV="$fixture/save_env.sh" bash -c '
   HOME_DIR="$HOME/.worrell"
   WORRELL_SERVICE_NAME=worrelld
   PORT_PREFIX=26
-  MONIKER=Worrel-Test
+  MONIKER=Worrell-Test
   WORRELL_VERSION=v0.1.2
   save_env
   save_env
@@ -43,4 +43,4 @@ HOME="$fixture/home" SAVE_ENV="$fixture/save_env.sh" bash -c '
   test "$(command -v worrelld)" = "$HOME/go/bin/worrelld"
 '
 
-echo 'Worrel profile PATH tests: PASS'
+echo 'Worrell profile PATH tests: PASS'

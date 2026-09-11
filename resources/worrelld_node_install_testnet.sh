@@ -325,8 +325,8 @@ if [ "$PRUNING_MODE_ARG_SET" = no ]; then
     done
 fi
 
-read -r -p "Enter node moniker [Worrel-Grand-Valley]: " MONIKER
-MONIKER=${MONIKER:-Worrel-Grand-Valley}
+read -r -p "Enter node moniker [Worrell-Grand-Valley]: " MONIKER
+MONIKER=${MONIKER:-Worrell-Grand-Valley}
 while true; do
     PORT_PREFIX=$(prompt_default 'Enter two-digit port prefix (26 keeps consensus defaults; API/gRPC become 26317/26090)' '26')
     valid_prefix "$PORT_PREFIX" && break
@@ -439,7 +439,7 @@ save_env
 sudo systemctl daemon-reload
 sudo systemctl enable --now "$WORRELL_SERVICE_NAME"
 if sudo systemctl is-active --quiet "$WORRELL_SERVICE_NAME"; then
-    echo -e "${GREEN}Worrel node installed and service is active.${RESET}"
+    echo -e "${GREEN}Worrell node installed and service is active.${RESET}"
 else
     echo -e "${RED}Service did not become active. Inspect: sudo journalctl -u ${WORRELL_SERVICE_NAME} -n 100 --no-pager${RESET}" >&2
     exit 1

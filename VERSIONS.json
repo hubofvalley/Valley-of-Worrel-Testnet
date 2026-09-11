@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "network_name": "worrell-testnet",
-  "human_name": "Valley of Worrel - Testnet",
+  "human_name": "Valley of Worrell - Testnet",
   "last_updated": "2026-09-09",
   "source_of_truth": "github.com/hubofvalley/Valley-of-Worrel-Testnet (resources/*.sh)",
   "verification_status": "needs_live_verification",

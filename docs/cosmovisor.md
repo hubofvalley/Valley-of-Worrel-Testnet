@@ -24,7 +24,7 @@ The default is direct mode. The pruning choice made during installation is prese
 
 ## Existing node migration
 
-1. Launch Valley of Worrel.
+1. Launch Valley of Worrell.
 2. Select `1. Node Interactions` -> `g. Manage Cosmovisor`.
 3. Select `1. Migrate current node to Cosmovisor`.
 4. Confirm the service is active and inspect `sudo journalctl -u worrelld -fn 100`.

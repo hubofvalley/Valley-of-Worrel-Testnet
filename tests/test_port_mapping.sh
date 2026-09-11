@@ -40,4 +40,4 @@ grep -q 'pruning = "custom"' "$fixture/.worrell/config/app.toml"
 grep -q 'pruning-keep-recent = "100"' "$fixture/.worrell/config/app.toml"
 grep -q 'pruning-interval = "20"' "$fixture/.worrell/config/app.toml"
 
-echo 'Worrel port mapping tests: PASS'
+echo 'Worrell port mapping tests: PASS'

@@ -124,4 +124,4 @@ HOME="$stop_fail_fixture" WORRELL_HOME="$stop_fail_fixture/home" WORRELL_SERVICE
 ' bash "$fixture/snapshot-functions.sh"
 rm -rf "$stop_fail_fixture"
 
-echo 'Worrel status and snapshot tests: PASS'
+echo 'Worrell status and snapshot tests: PASS'

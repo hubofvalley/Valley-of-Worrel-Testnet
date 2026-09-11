@@ -71,4 +71,4 @@ for args in '--service-mode invalid' '--service-mode' '--unknown'; do
 done
 [ ! -e "$fixture/.bash_profile" ]
 
-echo 'Worrel install mode tests: PASS'
+echo 'Worrell install mode tests: PASS'

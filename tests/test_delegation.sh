@@ -92,4 +92,4 @@ HOME="$fixture" WORRELL_HOME="$fixture/.worrell" CALLS="$fixture/calls" bash -c 
   ! grep -q "query bank\|query staking\|tx staking" "$CALLS"
 '
 
-echo 'Worrel delegation safety tests: PASS'
+echo 'Worrell delegation safety tests: PASS'

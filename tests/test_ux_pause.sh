@@ -26,4 +26,4 @@ done
 # The old immediate log-follow return must not regress.
 ! grep -q 'show_logs() { sudo journalctl.*; menu; }' "$menu"
 
-echo 'Worrel UX pause tests: PASS'
+echo 'Worrell UX pause tests: PASS'

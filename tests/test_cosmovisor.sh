@@ -33,7 +33,7 @@ grep -q 'VALLEY_COSMOVISOR_MIGRATION_SHA256' "$menu"
 grep -q 'VALLEY_COSMOVISOR_UPGRADE_SHA256' "$menu"
 grep -q '"cosmovisor"' "$repo/VALLEY.json"
 
-echo 'Worrel Cosmovisor tests: PASS'
+echo 'Worrell Cosmovisor tests: PASS'
 
 
 # Compact Valley routing must accept 1g, and post-upgrade CLI calls must
@@ -78,7 +78,7 @@ rm -rf "$fixture/home/cosmovisor/upgrades/worrell%20upgrade%201"
 touch "$fixture/home/data/upgrade-info.json"
 ! preflight_emergency_upgrade "$fixture/home" 'Worrell Upgrade 1'
 
-echo 'Worrel Cosmovisor routing tests: PASS'
+echo 'Worrell Cosmovisor routing tests: PASS'
 
 # A failure inside install_cosmovisor after stopping an active node must restore
 # the unit, profile, and both active/enabled states.
@@ -125,4 +125,4 @@ grep -q '^active=1$' "$rollback_fixture/state"
 grep -q '^enabled=1$' "$rollback_fixture/state"
 rm -rf "$rollback_fixture" /tmp/worrel-migration-failure.out
 
-echo 'Worrel Cosmovisor rollback tests: PASS'
+echo 'Worrell Cosmovisor rollback tests: PASS'

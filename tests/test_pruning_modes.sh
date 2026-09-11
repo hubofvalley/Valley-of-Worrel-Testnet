@@ -63,4 +63,4 @@ for args in '--pruning-mode invalid' '--pruning-mode' '--pruning-mode archive --
     fi
 done
 
-echo 'Worrel pruning mode tests: PASS'
+echo 'Worrell pruning mode tests: PASS'

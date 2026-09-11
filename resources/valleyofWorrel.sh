@@ -33,7 +33,7 @@ WORRELL_UNSAFE_SKIP_BACKUP=${WORRELL_UNSAFE_SKIP_BACKUP:-true}
 WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://worrel-testnet-rpc.oshvank.xyz}
 WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
-readonly VALLEY_INSTALLER_SHA256="d47a239010d10790279f77f5cf7b2c6ce59284534cad751e3a3123c5cda5f395"
+readonly VALLEY_INSTALLER_SHA256="4d1be98ab8e896997aeaa6c60650f12aca5a04ec3c4b5aa278e48f026ef8235a"
 readonly VALLEY_UPDATER_SHA256="fa074336f167c6189e05847bc87e448994bfdc335003ec5c20cb2d47b2243c14"
 readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="7b384a62d99a8a068ede9ef3145eb2a5d97121b534f7b3c565170d011aa20b0d"
 readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="c2579a36e6a11fdba35b8d9c1ed700d72b9833f5e5f70a7d91abf085d6e54a31"
@@ -150,7 +150,7 @@ show_intro() {
     local version="not installed; target $WORRELL_TARGET_VERSION" worrelld_bin=""
     if worrelld_bin=$(worrell_bin 2>/dev/null); then version=$("$worrelld_bin" version --long 2>/dev/null | head -1 || true); fi
     echo -e "
-Valley of Worrel by ${ORANGE}Grand Valley${RESET}
+Valley of Worrell by ${ORANGE}Grand Valley${RESET}
 
 ${GREEN}Worrell Testnet Node System Requirements${RESET}
 ${YELLOW}| Category  | Requirements |
@@ -500,7 +500,7 @@ create_validator() {
         menu
         return
     fi
-    read -r -p "Validator moniker [Worrel-Grand-Valley]: " moniker; moniker=${moniker:-Worrel-Grand-Valley}
+    read -r -p "Validator moniker [Worrell-Grand-Valley]: " moniker; moniker=${moniker:-Worrell-Grand-Valley}
     echo -e "${CYAN}Optional metadata: identity, website, and security email; validator details are editable; press Enter to keep the displayed defaults.${RESET}"
     read -r -p "Validator identity []: " identity; identity=${identity:-}
     read -r -p "Validator website []: " website; website=${website:-}
@@ -810,7 +810,7 @@ menu() {
     clear
     local height option main sub
     height=$(network_height || true)
-    echo -e "${ORANGE}Valley of Worrel Testnet${RESET}"
+    echo -e "${ORANGE}Valley of Worrell Testnet${RESET}"
     echo -e "${GREEN}Latest Block Height:${RESET} ${height:-unavailable}"
     echo -e "${GREEN}1. Node Interactions${RESET}"
     echo "   a. Install / redeploy node"
@@ -837,7 +837,7 @@ menu() {
     echo "5. Show Guidelines"
     echo -e "${RED}6. Exit${RESET}"
     echo -e "${YELLOW}Reminder: source ~/.bash_profile after installation.${RESET}"
-    echo "Let's Buidl Worrel Together - Grand Valley"
+    echo "Let's Buidl Worrell Together - Grand Valley"
     read -r -p "Choose an option (e.g., 1a or 1 then a): " option
     if [[ "$option" =~ ^[1-3][a-z]$ ]]; then main=${option:0:1}; sub=${option:1:1}; else main=$option; sub=""; fi
     if [[ "$main" =~ ^[1-3]$ && -z "$sub" ]]; then read -r -p "Choose a sub-option: " sub; fi

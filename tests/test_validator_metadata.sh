@@ -46,4 +46,4 @@ HOME="$fixture" WORRELL_HOME="$fixture/.worrell" bash -c '
     validator-id https://example.test ops@example.test "Custom validator details"
 '
 
-echo 'Worrel validator metadata tests: PASS'
+echo 'Worrell validator metadata tests: PASS'
