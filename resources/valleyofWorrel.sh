@@ -27,12 +27,13 @@ WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld}
 if [ -z "${WORRELL_SERVICE_USER:-}" ]; then
     if [ "${EUID:-$(id -u)}" -eq 0 ]; then WORRELL_SERVICE_USER=worrell; else WORRELL_SERVICE_USER=$(id -un); fi
 fi
-WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-26}
+WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-17}
 WORRELL_TARGET_VERSION=${WORRELL_TARGET_VERSION:-v0.1.2}
 WORRELL_UNSAFE_SKIP_BACKUP=${WORRELL_UNSAFE_SKIP_BACKUP:-true}
-WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://worrel-testnet-rpc.oshvank.xyz}
-WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
+WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://lightnode-rpc-worrell.grandvalleys.com}
+WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://lightnode-rpc-worrell.grandvalleys.com,https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
+WORRELL_PUBLIC_PEER=${WORRELL_PUBLIC_PEER:-e812f08760b18ed774369e899763735f80179f76@peer-worrell.grandvalleys.com:17656}
 readonly VALLEY_INSTALLER_SHA256="4d1be98ab8e896997aeaa6c60650f12aca5a04ec3c4b5aa278e48f026ef8235a"
 readonly VALLEY_UPDATER_SHA256="fa074336f167c6189e05847bc87e448994bfdc335003ec5c20cb2d47b2243c14"
 readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="7b384a62d99a8a068ede9ef3145eb2a5d97121b534f7b3c565170d011aa20b0d"
@@ -90,7 +91,7 @@ get_local_rpc_port() {
 
 local_status() {
     local port=${1:-$(get_local_rpc_port)}
-    port=${port:-26657}
+    port=${port:-17657}
     curl -m 5 -fsS "http://127.0.0.1:${port}/status" 2>/dev/null
 }
 
@@ -180,6 +181,10 @@ Worrell useful links:${RESET}
 
 ${GREEN}Network facts:${RESET}
 - Chain ID: ${CYAN}${WORRELL_CHAIN_ID}${RESET}
+- Live RPC: ${BLUE}${WORRELL_PUBLIC_RPC}${RESET}
+- Live WebSocket: ${BLUE}wss://lightnode-rpc-worrell.grandvalleys.com/websocket${RESET}
+- Live direct peer: ${CYAN}${WORRELL_PUBLIC_PEER}${RESET}
+- Default port prefix: ${CYAN}17${RESET} (P2P 17656, RPC 17657, ABCI 17658, REST 17317, gRPC 17090, gRPC-Web 17091, Prometheus 17660)
 - Public RPC candidates (availability not guaranteed): ${BLUE}${WORRELL_PUBLIC_RPCS//,/, }${RESET}
 - Official peers: ${CYAN}${WORRELL_PEERS}${RESET}
 - Genesis SHA256: ${CYAN}a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd${RESET}
@@ -244,7 +249,7 @@ install_node() {
         if [ "${EUID:-$(id -u)}" -eq 0 ]; then WORRELL_HOME="/var/lib/${WORRELL_SERVICE_USER:-worrell}"; else WORRELL_HOME="$HOME/.worrell"; fi
     fi
     WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld}
-    WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-26}
+    WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-17}
     if [ -r "$WORRELL_ENV_FILE" ]; then
         # shellcheck disable=SC1090
         source "$WORRELL_ENV_FILE"
@@ -381,7 +386,7 @@ update_node() {
 
 show_status() {
     local lh nh diff catching port
-    lh=$(local_height || true); nh=$(network_height || true); port=$(get_local_rpc_port); port=${port:-26657}
+    lh=$(local_height || true); nh=$(network_height || true); port=$(get_local_rpc_port); port=${port:-17657}
     catching=$(local_catching_up "$port")
     echo -e "${GREEN}Worrell node status${RESET}"
     echo "Local RPC: http://127.0.0.1:${port}"
@@ -591,7 +596,7 @@ resolve_worrell_key_address() {
 local_rpc_is_synced() {
     local port response
     port=$(get_local_rpc_port)
-    port=${port:-26657}
+    port=${port:-17657}
     response=$(local_status "$port") || return 1
     jq -e --arg chain "$WORRELL_CHAIN_ID" \
         '.result.node_info.network == $chain and .result.sync_info.catching_up == false' \
@@ -601,7 +606,7 @@ local_rpc_is_synced() {
 delegate_to_validator() {
     local name validator amount key_address rpc balance_preview validator_preview answer port
     port=$(get_local_rpc_port)
-    port=${port:-26657}
+    port=${port:-17657}
     rpc="tcp://127.0.0.1:$port"
     if ! local_rpc_is_synced; then
         echo -e "${RED}The local Worrell RPC is unavailable or the node is not confirmed synced. Wait for catching_up=false, then retry.${RESET}"

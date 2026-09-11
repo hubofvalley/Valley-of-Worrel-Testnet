@@ -10,7 +10,7 @@ Interactive terminal toolkit by **Grand Valley** for deploying and managing a Wo
 
 **Worrell** is a proof-of-stake blockchain built with Ignite CLI and the Cosmos SDK, using CometBFT consensus and focused on payments and energy infrastructure. The project includes staking and delegation, on-chain governance, dynamic inflation, and IBC support that is installed upstream but disabled at genesis while the network stabilises.
 
-This Valley package turns the official Worrell node procedure into an auditable, interactive workflow. It covers node installation, configuration, syncing, peer management, validator/key operations, systemd lifecycle, and Cosmovisor-based upgrade preparation. It does not claim to provide an official Worrell endpoint, faucet automation, or automatic transaction signing.
+This Valley package turns the official Worrell node procedure into an auditable, interactive workflow. It covers node installation, configuration, syncing, peer management, validator/key operations, systemd lifecycle, and Cosmovisor-based upgrade preparation. The live Grand Valley RPC is published below; faucet automation and automatic transaction signing remain out of scope.
 
 ## Network
 
@@ -22,7 +22,8 @@ This Valley package turns the official Worrell node procedure into an auditable,
 | Denomination | `uworrell` (1 WORRELL = 1,000,000 uworrell) |
 | Node home | `~/.worrell` |
 | Default service | `worrelld.service` |
-| Default P2P/RPC/ABCI | `26656` / `26657` / `26658` |
+| Default port prefix | `17` |
+| Live P2P/RPC/ABCI | `17656` / `17657` / `17658` |
 | Minimum gas price | `0.025uworrell` |
 
 ## Requirements
@@ -64,6 +65,17 @@ Run it as the OS user that owns the node. On a root-only RPC host, the installer
 - [Manual node guide](docs/node-guide.md)
 - [Version manifest](VERSIONS.json)
 - [Cosmovisor upgrade guide](docs/cosmovisor.md)
+
+## Live Grand Valley deployment
+
+- RPC: `https://lightnode-rpc-worrell.grandvalleys.com`
+- WebSocket: `wss://lightnode-rpc-worrell.grandvalleys.com/websocket`
+- Direct P2P: `e812f08760b18ed774369e899763735f80179f76@peer-worrell.grandvalleys.com:17656`
+- RPC node moniker: `grandvalley-lightnode`
+- Default port prefix: `17` (`17656` P2P, `17657` RPC)
+- Runtime: Cosmovisor with `UNSAFE_SKIP_BACKUP=true` by default; set `WORRELL_UNSAFE_SKIP_BACKUP=false` when rollback protection is required.
+
+Peer traffic is direct TCP to port `17656`; it is not served through an Nginx HTTP or stream proxy.
 
 ## Official links
 

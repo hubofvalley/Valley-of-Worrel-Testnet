@@ -2,10 +2,10 @@
   "schema_version": "1.0",
   "network_name": "worrell-testnet",
   "human_name": "Valley of Worrell - Testnet",
-  "last_updated": "2026-09-09",
+  "last_updated": "2026-09-11",
   "source_of_truth": "github.com/hubofvalley/Valley-of-Worrel-Testnet (resources/*.sh)",
-  "verification_status": "needs_live_verification",
-  "verification_note": "Seeded from the official Worrell node runbook and networks metadata. Live install, sync, validator state, and endpoint availability are not verified by this repository build.",
+  "verification_status": "live_verified",
+  "verification_note": "Live-verified on 2026-09-11: Cosmovisor Worrell RPC node grandvalley-lightnode is synced on port prefix 17 with public RPC and direct P2P endpoints below.",
   "release": {
     "tag": "v0.1.2",
     "commit": "2d849e1a33f6204952412a14e7b12cb5ef3870dd",
@@ -19,9 +19,9 @@
     "chain_spec": "worrelltestnet",
     "chain_id": "worrell-testnet-1",
     "evm_chain_id": null,
-    "consensus_default_rpc_port": 26657,
-    "consensus_default_p2p_port": 26656,
-    "consensus_default_abci_port": 26658
+    "consensus_default_rpc_port": 17657,
+    "consensus_default_p2p_port": 17656,
+    "consensus_default_abci_port": 17658
   },
   "components": {
     "validator": {
@@ -75,6 +75,22 @@
       "https://t-worrell.rpc.utsa.tech"
     ],
     "snapshot": null,
-    "faucet": "http://164.68.98.186:4500"
+    "faucet": "http://164.68.98.186:4500",
+    "public_rpc": "https://lightnode-rpc-worrell.grandvalleys.com",
+    "public_websocket": "wss://lightnode-rpc-worrell.grandvalleys.com/websocket",
+    "public_peer": "e812f08760b18ed774369e899763735f80179f76@peer-worrell.grandvalleys.com:17656",
+    "port_prefix": 17,
+    "ports": {
+      "p2p": 17656,
+      "rpc": 17657,
+      "abci": 17658,
+      "prometheus": 17660,
+      "api": 17317,
+      "grpc": 17090,
+      "grpc-web": 17091
+    },
+    "moniker": "grandvalley-lightnode",
+    "cosmovisor": true,
+    "unsafe_skip_backup": true
   }
 }

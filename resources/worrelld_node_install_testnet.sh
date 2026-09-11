@@ -325,12 +325,12 @@ if [ "$PRUNING_MODE_ARG_SET" = no ]; then
     done
 fi
 
-read -r -p "Enter node moniker [Worrell-Grand-Valley]: " MONIKER
-MONIKER=${MONIKER:-Worrell-Grand-Valley}
+read -r -p "Enter node moniker [grandvalley-lightnode]: " MONIKER
+MONIKER=${MONIKER:-grandvalley-lightnode}
 while true; do
-    PORT_PREFIX=$(prompt_default 'Enter two-digit port prefix (26 keeps consensus defaults; API/gRPC become 26317/26090)' '26')
+    PORT_PREFIX=$(prompt_default 'Enter two-digit port prefix (17 uses P2P/RPC 17656/17657; API/gRPC become 17317/17090)' '17')
     valid_prefix "$PORT_PREFIX" && break
-    echo -e "${RED}Use exactly two digits, for example 26 or 38.${RESET}"
+    echo -e "${RED}Use exactly two digits, for example 17 or 38.${RESET}"
 done
 WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-}
 while [ -z "$WORRELL_SERVICE_NAME" ]; do
