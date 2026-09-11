@@ -54,4 +54,4 @@ HOME="$fixture" WORRELL_HOME="$fixture/.worrell" EVENTS="$fixture/events" CALLS=
   test "$(sed -n "2p" "$EVENTS")" = menu
 '
 
-echo 'Worrel key creation output tests: PASS'
+echo 'Worrell key creation output tests: PASS'

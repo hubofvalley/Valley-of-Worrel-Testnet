@@ -58,4 +58,4 @@ grep -q 'Delegate to validator' "$menu"
 jq -e '.components[].capabilities | index("staking_tx")' "$repo/VALLEY.json" >/dev/null
 grep -q 'Type DELETE' "$menu"
 
-echo 'Worrel contract tests: PASS'
+echo 'Worrell contract tests: PASS'

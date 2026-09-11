@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "project": "Worrel",
+  "project": "Worrell",
   "network": "Testnet",
   "architecture": "v1",
   "entrypoint": "resources/valleyofWorrel.sh",

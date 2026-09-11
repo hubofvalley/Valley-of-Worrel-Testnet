@@ -33,4 +33,4 @@ HOME="$fixture" bash -c '
   jq -e "(.details == \"Entered validator details\") and (.amount == \"20000000uworrell\")" <<<"$json" >/dev/null
 '
 
-echo 'Worrel validator safety tests: PASS'
+echo 'Worrell validator safety tests: PASS'

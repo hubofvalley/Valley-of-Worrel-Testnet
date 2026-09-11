@@ -1,4 +1,4 @@
-# Valley of Worrel - Usage Guide
+# Valley of Worrell - Usage Guide
 
 ## Run
 
