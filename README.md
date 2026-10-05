@@ -10,7 +10,7 @@ Interactive terminal toolkit by **Grand Valley** for deploying and managing a Wo
 
 **Worrell** is a proof-of-stake blockchain built with Ignite CLI and the Cosmos SDK, using CometBFT consensus and focused on payments and energy infrastructure. The project includes staking and delegation, on-chain governance, dynamic inflation, and IBC support that is installed upstream but disabled at genesis while the network stabilises.
 
-This Valley package turns the official Worrell node procedure into an auditable, interactive workflow. It covers node installation, configuration, syncing, peer management, validator/key operations, systemd lifecycle, and Cosmovisor-based upgrade preparation. The live Grand Valley RPC is published below; faucet automation and automatic transaction signing remain out of scope.
+This Valley package turns the official Worrell node procedure into an auditable, interactive workflow. It covers node installation, configuration, syncing, peer management, validator/key operations, systemd lifecycle, and Cosmovisor-based upgrade preparation. It does not claim to provide an official Worrell endpoint, faucet automation, or automatic transaction signing.
 
 ## Network
 
@@ -22,8 +22,7 @@ This Valley package turns the official Worrell node procedure into an auditable,
 | Denomination | `uworrell` (1 WORRELL = 1,000,000 uworrell) |
 | Node home | `~/.worrell` |
 | Default service | `worrelld.service` |
-| Default port prefix | `17` |
-| Live P2P/RPC/ABCI | `17656` / `17657` / `17658` |
+| Default P2P/RPC/ABCI | `26656` / `26657` / `26658` |
 | Minimum gas price | `0.025uworrell` |
 
 ## Requirements
@@ -54,7 +53,7 @@ Run it as the OS user that owns the node. On a root-only RPC host, the installer
 - Official genesis download and `worrelld genesis validate-genesis` gate.
 - Official persistent peers, configurable two-digit local port prefix, and optional UFW.
 - Idempotent systemd service installation with ownership and backup checks.
-- Selectable pruned or archive application-state storage, optional direct `worrelld` or Cosmovisor-managed service, and guarded pruned snapshot application from ITRocket or Sychonix. Cosmovisor automatic binary downloads remain disabled. The menu includes a predefined verified `v0.1.3` governance-upgrade staging option plus a custom release path; live runtime remains `v0.1.2` until the chain upgrade.
+- Selectable pruned or archive application-state storage, optional direct `worrelld` or Cosmovisor-managed service, and guarded pruned snapshot application from ITRocket or Sychonix. Cosmovisor automatic binary downloads remain disabled.
 - Read-only status, logs, peer management, key/balance helpers, validator creation, guarded `tx staking delegate` delegation, and unjail flow.
 - Snapshot application is available through a guarded pruned-snapshot flow; archive snapshots remain disabled until a provider is verified.
 - Faucet requests remain manual; validator, delegation, and unjail transactions require a local preview and explicit operator confirmation.
@@ -65,17 +64,6 @@ Run it as the OS user that owns the node. On a root-only RPC host, the installer
 - [Manual node guide](docs/node-guide.md)
 - [Version manifest](VERSIONS.json)
 - [Cosmovisor upgrade guide](docs/cosmovisor.md)
-
-## Live Grand Valley deployment
-
-- RPC: `https://lightnode-rpc-worrell.grandvalleys.com`
-- WebSocket: `wss://lightnode-rpc-worrell.grandvalleys.com/websocket`
-- Direct P2P: `e812f08760b18ed774369e899763735f80179f76@peer-worrell.grandvalleys.com:17656`
-- RPC node moniker: `grandvalley-lightnode`
-- Default port prefix: `17` (`17656` P2P, `17657` RPC)
-- Runtime: Cosmovisor with `UNSAFE_SKIP_BACKUP=true` by default; set `WORRELL_UNSAFE_SKIP_BACKUP=false` when rollback protection is required.
-
-Peer traffic is direct TCP to port `17656`; it is not served through an Nginx HTTP or stream proxy.
 
 ## Official links
 
