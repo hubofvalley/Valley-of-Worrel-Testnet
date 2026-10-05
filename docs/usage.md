@@ -22,7 +22,7 @@ Run as the node OS user. Do not use `sudo bash` when a normal node user exists; 
 | `1d` | Follows the selected service journal. | Read-only. |
 | `1e` | Sets manual persistent peers or restores the two peers from official network metadata. | Medium: changes config. |
 | `1f` | Queries an operator key balance. | Read-only. |
-| `1g` | Manages Cosmovisor: migrates an existing node, shows status, or stages a verified upgrade binary. | Medium/high: service unit changes or upgrade preparation. |
+| `1g` | Manages Cosmovisor: migrates an existing node, shows status, or stages a verified upgrade binary. The staging menu includes the predefined official `v0.1.3` governance option and a custom verified-release path. | Medium/high: service unit changes or upgrade preparation. |
 | `1h` | Applies a verified pruned snapshot from ITRocket or Sychonix after archive validation and explicit confirmation. Preserves config and validator state. | High: replaces node data after confirmation. |
 
 ### 2. Validator / Key Interactions
@@ -49,7 +49,7 @@ After an operation finishes, Valley keeps its output visible and waits for `Pres
 
 ### 4. Endpoints
 
-Prints Worrell links, network-registry RPC candidates, explorer candidates, faucet endpoint, and Grand Valley links. Endpoint availability is not guaranteed by this repository, and no Grand Valley Worrell endpoint or validator is claimed.
+Prints Worrell links, the live Grand Valley RPC/WebSocket/P2P endpoints, network-registry RPC candidates, explorer candidates, faucet endpoint, and Grand Valley links. The live RPC is verified separately from community endpoint availability.
 
 ### 5. Guidelines
 
@@ -63,7 +63,7 @@ Leaves the menu. For a normal node user, the installer keeps the canonical `$HOM
 
 1. Review the installer and release checksum source.
 2. Run `1a` as a dedicated node OS user. A root-only RPC host is also supported: the installer creates the dedicated `worrell` service account automatically.
-3. Choose a two-digit port prefix from `10` through `64` if the default ports are occupied. Prefix `26` keeps consensus ports at 26656/26657/26658; API/gRPC/Prometheus are still remapped consistently.
+3. Choose a two-digit port prefix from `10` through `64` if the default ports are occupied. The live Grand Valley deployment uses prefix `17`: P2P/RPC/ABCI `17656/17657/17658`, REST/gRPC/gRPC-Web `17317/17090/17091`, and Prometheus `17660`.
 4. Choose pruning when prompted: blank/`p` uses custom pruning with keep recent `100` and interval `20`; `a` uses archive mode and retains application-state history.
 5. Choose the install runtime: blank/`no` keeps the direct `worrelld` systemd service; `yes` installs pinned Cosmovisor with automatic downloads disabled. You can migrate a direct node later through `1g`; root-only installs support the same lifecycle under `/var/lib/worrell`.
 6. Wait for `catching_up: false` in `1c`.
@@ -94,7 +94,7 @@ Snapshot providers may publish pruned state only. Changing `app.toml` to archive
 
 Worrell's application wires the Cosmos SDK `x/upgrade` module, so the node can be run through Cosmovisor. During `1a`, choose the runtime explicitly: blank/`no` (the default) installs a direct `worrelld` service; `yes` installs and initialises pinned Cosmovisor. Existing direct-binary nodes can use `1g` -> **Migrate current node to Cosmovisor**.
 
-Cosmovisor is optional at install time. Selecting direct mode does not uninstall an existing Cosmovisor binary, and selecting Cosmovisor does not enable automatic downloads. For a governance upgrade, stage the exact release and on-chain plan name with **Stage a verified upgrade binary**, then verify the prepared path and upgrade plan before the height. The optional emergency height is only for a coordinated local height-based upgrade and must be independently confirmed. The migration does not delete `data/upgrade-info.json` or node data.
+Cosmovisor is optional at install time. Selecting direct mode does not uninstall an existing Cosmovisor binary, and selecting Cosmovisor does not enable automatic downloads. The current live release remains `v0.1.2`. For proposal #3, use **Stage a verified upgrade binary** -> `v0.1.3`; Valley supplies the exact governance plan name `v0.1.3` and stages without a local `--upgrade-height` because the chain plan supplies block `1186000`. A custom release path remains available for separately coordinated upgrades. Staging does not activate the binary or restart the service. The migration does not delete `data/upgrade-info.json` or node data.
 
 Cosmovisor state is stored under `~/.worrell/cosmovisor/`:
 

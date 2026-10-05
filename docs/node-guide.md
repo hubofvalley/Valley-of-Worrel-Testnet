@@ -15,7 +15,7 @@ This guide translates the official Worrell runbook into the Valley paths. Re-che
 | SDK / consensus | Cosmos SDK `v0.53.6` / CometBFT |
 | Genesis SHA256 | `a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd` |
 
-Official source: [RUNNING-A-NODE.md](https://github.com/worrellchain/worrell/blob/main/docs/RUNNING-A-NODE.md).
+Official source: [RUNNING-A-NODE.md](https://github.com/worrellchain/worrell/blob/main/docs/RUNNING-A-NODE.md). The live release remains `v0.1.2`; the Valley Cosmovisor menu also has a verified `v0.1.3` staging option for governance plan `v0.1.3` at block `1186000`.
 
 ## Install the binary
 
@@ -84,10 +84,19 @@ Set the official peers in `config.toml`:
 persistent_peers = "bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656"
 
 [rpc]
-laddr = "tcp://127.0.0.1:26657"
+laddr = "tcp://127.0.0.1:17657"
 ```
 
-Set `minimum-gas-prices = "0.025uworrell"` in `app.toml`. Valley can remap local RPC, P2P, ABCI, API, gRPC, and Prometheus ports with a two-digit prefix; the official peer ports remain unchanged.
+Set `minimum-gas-prices = "0.025uworrell"` in `app.toml`. The live Grand Valley profile uses prefix `17`: P2P `17656`, RPC `17657`, ABCI `17658`, REST `17317`, gRPC `17090`, gRPC-Web `17091`, and Prometheus `17660`. The official community peer ports remain unchanged.
+
+Live Grand Valley endpoints:
+
+- RPC: `https://lightnode-rpc-worrell.grandvalleys.com`
+- WebSocket: `wss://lightnode-rpc-worrell.grandvalleys.com/websocket`
+- Direct peer: `e812f08760b18ed774369e899763735f80179f76@peer-worrell.grandvalleys.com:17656`
+- Moniker: `grandvalley-lightnode`
+
+The peer endpoint is direct TCP and is not an Nginx HTTP/stream proxy.
 
 ## Start and sync
 
@@ -139,7 +148,7 @@ suffix. There is no separate `stake` command:
 ```bash
 worrelld tx staking delegate <worrellvaloper1...> 1000000uworrell \
   --from <key-name> --chain-id worrell-testnet-1 --home "$WORRELL_HOME" \
-  --node "tcp://127.0.0.1:26657" \
+  --node "tcp://127.0.0.1:17657" \
   --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes
 ```
 
@@ -165,12 +174,13 @@ Never run two instances with the same `priv_validator_key.json`. Double-signing 
 
 | Service | Default | Recommended exposure |
 |---|---:|---|
-| CometBFT P2P | 26656 | Public |
-| CometBFT RPC | 26657 | Localhost / trusted IPs |
-| ABCI | 26658 | Localhost |
-| REST API | 1317 | Localhost unless protected |
-| gRPC | 9090 | Localhost unless protected |
-| Prometheus | 26660 | Localhost / monitoring network |
+| CometBFT P2P | 17656 | Public |
+| CometBFT RPC | 17657 | Localhost / trusted IPs; public RPC is HTTPS above |
+| ABCI | 17658 | Localhost |
+| REST API | 17317 | Localhost unless protected |
+| gRPC | 17090 | Localhost unless protected |
+| gRPC-Web | 17091 | Localhost unless protected |
+| Prometheus | 17660 | Localhost / monitoring network |
 
 ## Official endpoints
 

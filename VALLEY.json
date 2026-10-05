@@ -37,37 +37,37 @@
       "ports": [
         {
           "role": "p2p",
-          "default": 26656,
+          "default": 17656,
           "exposure": "public"
         },
         {
           "role": "rpc",
-          "default": 26657,
+          "default": 17657,
           "exposure": "loopback"
         },
         {
           "role": "abci",
-          "default": 26658,
+          "default": 17658,
           "exposure": "loopback"
         },
         {
           "role": "prometheus",
-          "default": 26660,
+          "default": 17660,
           "exposure": "loopback"
         },
         {
           "role": "api",
-          "default": 1317,
+          "default": 17317,
           "exposure": "loopback"
         },
         {
           "role": "grpc",
-          "default": 9090,
+          "default": 17090,
           "exposure": "loopback"
         },
         {
           "role": "grpc-web",
-          "default": 9091,
+          "default": 17091,
           "exposure": "loopback"
         }
       ]
@@ -75,5 +75,24 @@
   ],
   "runtime": {
     "remote_helpers": "pinned_commit"
+  },
+  "live_deployment": {
+    "verified_date": "2026-09-11",
+    "port_prefix": 17,
+    "ports": {
+      "p2p": 17656,
+      "rpc": 17657,
+      "abci": 17658,
+      "prometheus": 17660,
+      "api": 17317,
+      "grpc": 17090,
+      "grpc-web": 17091
+    },
+    "moniker": "grandvalley-lightnode",
+    "public_rpc": "https://lightnode-rpc-worrell.grandvalleys.com",
+    "public_websocket": "wss://lightnode-rpc-worrell.grandvalleys.com/websocket",
+    "public_peer": "e812f08760b18ed774369e899763735f80179f76@peer-worrell.grandvalleys.com:17656",
+    "cosmovisor": true,
+    "unsafe_skip_backup": true
   }
 }

@@ -27,19 +27,23 @@ WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld}
 if [ -z "${WORRELL_SERVICE_USER:-}" ]; then
     if [ "${EUID:-$(id -u)}" -eq 0 ]; then WORRELL_SERVICE_USER=worrell; else WORRELL_SERVICE_USER=$(id -un); fi
 fi
-WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-26}
+WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-17}
 WORRELL_TARGET_VERSION=${WORRELL_TARGET_VERSION:-v0.1.2}
 WORRELL_UNSAFE_SKIP_BACKUP=${WORRELL_UNSAFE_SKIP_BACKUP:-true}
-WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://worrel-testnet-rpc.oshvank.xyz}
-WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
+readonly WORRELL_UPGRADE_V0_1_3="v0.1.3"
+readonly WORRELL_UPGRADE_PLAN_V0_1_3="v0.1.3"
+readonly WORRELL_UPGRADE_HEIGHT_V0_1_3="1186000"
+WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://lightnode-rpc-worrell.grandvalleys.com}
+WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://lightnode-rpc-worrell.grandvalleys.com,https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
-readonly VALLEY_INSTALLER_SHA256="4d1be98ab8e896997aeaa6c60650f12aca5a04ec3c4b5aa278e48f026ef8235a"
+WORRELL_PUBLIC_PEER=${WORRELL_PUBLIC_PEER:-e812f08760b18ed774369e899763735f80179f76@peer-worrell.grandvalleys.com:17656}
+readonly VALLEY_INSTALLER_SHA256="b0f21d67a4ffb0f721e47130bb4ffc8dcf40292d8648bff7adcfcacc70a98b52"
 readonly VALLEY_UPDATER_SHA256="fa074336f167c6189e05847bc87e448994bfdc335003ec5c20cb2d47b2243c14"
 readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="7b384a62d99a8a068ede9ef3145eb2a5d97121b534f7b3c565170d011aa20b0d"
 readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="c2579a36e6a11fdba35b8d9c1ed700d72b9833f5e5f70a7d91abf085d6e54a31"
-readonly VALLEY_SNAPSHOT_SHA256="d63003514944d25b731d047c6bf01891c0a709955d4d76f2798358a542609061"
-readonly VALLEY_SCRIPT_COMMIT="1c34cad5009e99cc0acac335cbf9929ff93e93de"
-readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/53bf38fd2c477a690d8f9072c8d2def1d17d9e90/resources"
+readonly VALLEY_SNAPSHOT_SHA256="3b10c2e7f81b72d6d13b1b5598527c6608deccaf90240af0b2b089dd7e22931b"
+readonly VALLEY_SCRIPT_COMMIT="d4235d48f4cac2a0d1324a56a7c34973cf7f1ec1"
+readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/d4235d48f4cac2a0d1324a56a7c34973cf7f1ec1/resources"
 
 export WORRELL_HOME WORRELL_ENV_FILE WORRELL_CHAIN_ID WORRELL_SERVICE_NAME
 export WORRELL_SERVICE_USER WORRELL_PORT_PREFIX WORRELL_TARGET_VERSION WORRELL_UNSAFE_SKIP_BACKUP
@@ -90,7 +94,7 @@ get_local_rpc_port() {
 
 local_status() {
     local port=${1:-$(get_local_rpc_port)}
-    port=${port:-26657}
+    port=${port:-17657}
     curl -m 5 -fsS "http://127.0.0.1:${port}/status" 2>/dev/null
 }
 
@@ -180,6 +184,10 @@ Worrell useful links:${RESET}
 
 ${GREEN}Network facts:${RESET}
 - Chain ID: ${CYAN}${WORRELL_CHAIN_ID}${RESET}
+- Live RPC: ${BLUE}${WORRELL_PUBLIC_RPC}${RESET}
+- Live WebSocket: ${BLUE}wss://lightnode-rpc-worrell.grandvalleys.com/websocket${RESET}
+- Live direct peer: ${CYAN}${WORRELL_PUBLIC_PEER}${RESET}
+- Default port prefix: ${CYAN}17${RESET} (P2P 17656, RPC 17657, ABCI 17658, REST 17317, gRPC 17090, gRPC-Web 17091, Prometheus 17660)
 - Public RPC candidates (availability not guaranteed): ${BLUE}${WORRELL_PUBLIC_RPCS//,/, }${RESET}
 - Official peers: ${CYAN}${WORRELL_PEERS}${RESET}
 - Genesis SHA256: ${CYAN}a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd${RESET}
@@ -244,7 +252,7 @@ install_node() {
         if [ "${EUID:-$(id -u)}" -eq 0 ]; then WORRELL_HOME="/var/lib/${WORRELL_SERVICE_USER:-worrell}"; else WORRELL_HOME="$HOME/.worrell"; fi
     fi
     WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld}
-    WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-26}
+    WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-17}
     if [ -r "$WORRELL_ENV_FILE" ]; then
         # shellcheck disable=SC1090
         source "$WORRELL_ENV_FILE"
@@ -306,6 +314,49 @@ show_cosmovisor_status() {
     menu
 }
 
+stage_cosmovisor_upgrade() {
+    local choice version upgrade_name upgrade_height answer
+    echo -e "${ORANGE}Stage a Cosmovisor upgrade binary${RESET}"
+    echo "1. v0.1.3 — governance plan v0.1.3 at block ${WORRELL_UPGRADE_HEIGHT_V0_1_3} (recommended)"
+    echo "c. Custom verified release and upgrade plan"
+    echo "b. Back"
+    read -r -p "Choose: " choice
+    case "${choice,,}" in
+        1)
+            version="$WORRELL_UPGRADE_V0_1_3"
+            upgrade_name="$WORRELL_UPGRADE_PLAN_V0_1_3"
+            upgrade_height=""
+            echo -e "${YELLOW}Governance mode: no local --upgrade-height is passed; the chain plan supplies block ${WORRELL_UPGRADE_HEIGHT_V0_1_3}.${RESET}"
+            read -r -p "Stage $version for governance plan $upgrade_name? (yes/no): " answer
+            ;;
+        c)
+            read -r -p "Release version (for example v0.1.2): " version
+            read -r -p "On-chain upgrade name: " upgrade_name
+            read -r -p "Emergency upgrade height (leave empty for governance plan): " upgrade_height
+            read -r -p "Stage this verified release? (yes/no): " answer
+            ;;
+        b|"")
+            menu
+            return
+            ;;
+        *)
+            echo -e "${RED}Invalid option.${RESET}"
+            prompt_back
+            menu
+            return
+            ;;
+    esac
+    if [[ "${answer,,}" == yes ]]; then
+        if ! run_pinned_child worrelld_cosmovisor_upgrade.sh "$VALLEY_COSMOVISOR_UPGRADE_SHA256" "$version" "$upgrade_name" "$upgrade_height"; then
+            echo -e "${RED}Cosmovisor upgrade staging failed. Review the output above before retrying.${RESET}" >&2
+        fi
+    else
+        echo -e "${YELLOW}Cosmovisor upgrade staging cancelled. No upgrade binary was changed.${RESET}"
+    fi
+    prompt_back
+    menu
+}
+
 manage_cosmovisor() {
     echo -e "${ORANGE}Manage Cosmovisor${RESET}"
     echo "1. Migrate current node to Cosmovisor"
@@ -326,14 +377,7 @@ manage_cosmovisor() {
             if ! cosmovisor_active; then
                 echo -e "${RED}Migrate the node to Cosmovisor first.${RESET}"; prompt_back; menu; return
             fi
-            read -r -p "Release version (for example v0.1.2): " version
-            read -r -p "On-chain upgrade name: " upgrade_name
-            read -r -p "Emergency upgrade height (leave empty for governance plan): " upgrade_height
-            if ! run_pinned_child worrelld_cosmovisor_upgrade.sh "$VALLEY_COSMOVISOR_UPGRADE_SHA256" "$version" "$upgrade_name" "$upgrade_height"; then
-                echo -e "${RED}Cosmovisor upgrade staging failed. Review the output above before retrying.${RESET}" >&2
-            fi
-            prompt_back
-            menu
+            stage_cosmovisor_upgrade
             ;;
         4) menu ;;
         *)
@@ -381,7 +425,7 @@ update_node() {
 
 show_status() {
     local lh nh diff catching port
-    lh=$(local_height || true); nh=$(network_height || true); port=$(get_local_rpc_port); port=${port:-26657}
+    lh=$(local_height || true); nh=$(network_height || true); port=$(get_local_rpc_port); port=${port:-17657}
     catching=$(local_catching_up "$port")
     echo -e "${GREEN}Worrell node status${RESET}"
     echo "Local RPC: http://127.0.0.1:${port}"
@@ -591,7 +635,7 @@ resolve_worrell_key_address() {
 local_rpc_is_synced() {
     local port response
     port=$(get_local_rpc_port)
-    port=${port:-26657}
+    port=${port:-17657}
     response=$(local_status "$port") || return 1
     jq -e --arg chain "$WORRELL_CHAIN_ID" \
         '.result.node_info.network == $chain and .result.sync_info.catching_up == false' \
@@ -601,7 +645,7 @@ local_rpc_is_synced() {
 delegate_to_validator() {
     local name validator amount key_address rpc balance_preview validator_preview answer port
     port=$(get_local_rpc_port)
-    port=${port:-26657}
+    port=${port:-17657}
     rpc="tcp://127.0.0.1:$port"
     if ! local_rpc_is_synced; then
         echo -e "${RED}The local Worrell RPC is unavailable or the node is not confirmed synced. Wait for catching_up=false, then retry.${RESET}"

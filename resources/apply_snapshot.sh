@@ -217,7 +217,7 @@ rollback_snapshot() {
 wait_for_healthy_service() {
     local port attempt response
     port=$(awk -F: '/^[[:space:]]*laddr[[:space:]]*=.*127\.0\.0\.1:/ {gsub(/".*/, "", $3); print $3; exit}' "$WORRELL_HOME/config/config.toml")
-    port=${port:-26657}
+    port=${port:-17657}
     for attempt in 1 2 3 4 5; do
         sudo systemctl is-active --quiet "$WORRELL_SERVICE_NAME" || return 1
         response=$(curl -fsS --connect-timeout 2 --max-time 5 "http://127.0.0.1:${port}/status" 2>/dev/null || true)

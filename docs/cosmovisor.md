@@ -33,13 +33,14 @@ Migration stops the service briefly, preserves node data and `data/upgrade-info.
 
 ## Stage an upgrade binary
 
-Select `Manage Cosmovisor` -> `Stage a verified upgrade binary`, then enter:
+Select `Manage Cosmovisor` -> `Stage a verified upgrade binary`. The menu now offers:
 
-- the upstream Worrell release, for example `v0.1.2`;
-- the exact governance upgrade plan name;
-- an emergency upgrade height only when explicitly coordinated.
+1. `v0.1.3` — the official release for proposal #3, with governance plan name `v0.1.3` and scheduled upgrade height `1186000`;
+2. a custom verified release and plan for another coordinated upgrade.
 
-The helper downloads the architecture-specific release, verifies it against the upstream `release_checksum`, and calls `cosmovisor add-upgrade`. Valley verifies the immutable helper script separately before execution; it does not maintain a fixed hash for every arbitrary future Worrell release. Governance plan names may contain spaces; the helper does not impose a narrower SDK-incompatible grammar. It does not restart the service. For governance upgrades, the plan name must match the on-chain name exactly. Never enable automatic binary downloads on a validator.
+The predefined `v0.1.3` path stages the binary with `cosmovisor add-upgrade v0.1.3` and intentionally does **not** pass `--upgrade-height`: the height is supplied by the on-chain governance plan. The current live release remains `v0.1.2`; staging the binary does not activate it or restart the service.
+
+The helper downloads the architecture-specific release, verifies it against the upstream `release_checksum`, and calls `cosmovisor add-upgrade`. The official v0.1.3 asset hashes and tag commit are recorded in `VERSIONS.json`. Valley verifies the immutable helper script separately before execution. Governance plan names must match the on-chain name exactly. Never enable automatic binary downloads on a validator.
 
 ## Layout and environment
 
