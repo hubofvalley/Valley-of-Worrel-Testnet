@@ -30,9 +30,37 @@ grep -q 'rejects `--chain-id` on `start`' "$repo/docs/cosmovisor.md"
 grep -q 'cosmovisor_migration.sh' "$menu"
 grep -q 'worrelld_cosmovisor_upgrade.sh' "$menu"
 grep -q 'VALLEY_COSMOVISOR_MIGRATION_SHA256' "$menu"
+grep -q 'WORRELL_UPGRADE_V0_1_3="v0.1.3"' "$menu"
+grep -q 'WORRELL_UPGRADE_PLAN_V0_1_3="v0.1.3"' "$menu"
+grep -q 'WORRELL_UPGRADE_HEIGHT_V0_1_3="1186000"' "$menu"
+grep -q 'stage_cosmovisor_upgrade' "$menu"
+grep -q 'no local --upgrade-height is passed' "$menu"
 grep -q 'VALLEY_COSMOVISOR_UPGRADE_SHA256' "$menu"
 grep -q '"cosmovisor"' "$repo/VALLEY.json"
+jq -e '.upgrade_options[] | select(.tag == "v0.1.3" and .governance_plan_name == "v0.1.3" and .governance_upgrade_height == "1186000")' "$repo/VERSIONS.json" >/dev/null
+grep -q 'b6e8687d1af51f8dea81c1ba6ecd93b358ce6bb80468159c1c7f70d4b908a6ec' "$repo/VERSIONS.json"
+grep -q '11c2e324b03693380515e97b8090a86f132bc4ea467d80d0e8d05709d15ee5d0' "$repo/VERSIONS.json"
 
+# The predefined governance option must pass the plan name and an empty
+# emergency height to the staging helper.
+stage_fixture=$(mktemp)
+trap 'rm -f "$stage_fixture"' EXIT
+{
+    printf '%s\n' 'RED= GREEN= ORANGE= YELLOW= RESET='
+    printf '%s\n' 'WORRELL_UPGRADE_V0_1_3=v0.1.3'
+    printf '%s\n' 'WORRELL_UPGRADE_PLAN_V0_1_3=v0.1.3'
+    printf '%s\n' 'WORRELL_UPGRADE_HEIGHT_V0_1_3=1186000'
+    printf '%s\n' 'VALLEY_COSMOVISOR_UPGRADE_SHA256=fixture'
+    printf '%s\n' 'menu() { :; }' 'prompt_back() { :; }'
+    printf '%s\n' 'run_pinned_child() { printf "CAPTURE=%s|%s|%s|%s|%s\\n" "$@"; }'
+    sed -n '/^stage_cosmovisor_upgrade()/,/^}/p' "$menu"
+    printf '%s\n' 'printf "1\\nyes\\n" | stage_cosmovisor_upgrade'
+} > "$stage_fixture"
+stage_output=$(bash "$stage_fixture")
+grep -q 'CAPTURE=worrelld_cosmovisor_upgrade.sh|fixture|v0.1.3|v0.1.3|' <<< "$stage_output"
+
+rm -f "$stage_fixture"
+trap - EXIT
 echo 'Worrell Cosmovisor tests: PASS'
 
 

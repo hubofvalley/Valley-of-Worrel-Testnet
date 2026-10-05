@@ -22,7 +22,7 @@ Run as the node OS user. Do not use `sudo bash` when a normal node user exists; 
 | `1d` | Follows the selected service journal. | Read-only. |
 | `1e` | Sets manual persistent peers or restores the two peers from official network metadata. | Medium: changes config. |
 | `1f` | Queries an operator key balance. | Read-only. |
-| `1g` | Manages Cosmovisor: migrates an existing node, shows status, or stages a verified upgrade binary. | Medium/high: service unit changes or upgrade preparation. |
+| `1g` | Manages Cosmovisor: migrates an existing node, shows status, or stages a verified upgrade binary. The staging menu includes the predefined official `v0.1.3` governance option and a custom verified-release path. | Medium/high: service unit changes or upgrade preparation. |
 | `1h` | Applies a verified pruned snapshot from ITRocket or Sychonix after archive validation and explicit confirmation. Preserves config and validator state. | High: replaces node data after confirmation. |
 
 ### 2. Validator / Key Interactions
@@ -94,7 +94,7 @@ Snapshot providers may publish pruned state only. Changing `app.toml` to archive
 
 Worrell's application wires the Cosmos SDK `x/upgrade` module, so the node can be run through Cosmovisor. During `1a`, choose the runtime explicitly: blank/`no` (the default) installs a direct `worrelld` service; `yes` installs and initialises pinned Cosmovisor. Existing direct-binary nodes can use `1g` -> **Migrate current node to Cosmovisor**.
 
-Cosmovisor is optional at install time. Selecting direct mode does not uninstall an existing Cosmovisor binary, and selecting Cosmovisor does not enable automatic downloads. For a governance upgrade, stage the exact release and on-chain plan name with **Stage a verified upgrade binary**, then verify the prepared path and upgrade plan before the height. The optional emergency height is only for a coordinated local height-based upgrade and must be independently confirmed. The migration does not delete `data/upgrade-info.json` or node data.
+Cosmovisor is optional at install time. Selecting direct mode does not uninstall an existing Cosmovisor binary, and selecting Cosmovisor does not enable automatic downloads. The current live release remains `v0.1.2`. For proposal #3, use **Stage a verified upgrade binary** -> `v0.1.3`; Valley supplies the exact governance plan name `v0.1.3` and stages without a local `--upgrade-height` because the chain plan supplies block `1186000`. A custom release path remains available for separately coordinated upgrades. Staging does not activate the binary or restart the service. The migration does not delete `data/upgrade-info.json` or node data.
 
 Cosmovisor state is stored under `~/.worrell/cosmovisor/`:
 

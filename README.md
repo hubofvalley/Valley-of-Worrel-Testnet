@@ -54,7 +54,7 @@ Run it as the OS user that owns the node. On a root-only RPC host, the installer
 - Official genesis download and `worrelld genesis validate-genesis` gate.
 - Official persistent peers, configurable two-digit local port prefix, and optional UFW.
 - Idempotent systemd service installation with ownership and backup checks.
-- Selectable pruned or archive application-state storage, optional direct `worrelld` or Cosmovisor-managed service, and guarded pruned snapshot application from ITRocket or Sychonix. Cosmovisor automatic binary downloads remain disabled.
+- Selectable pruned or archive application-state storage, optional direct `worrelld` or Cosmovisor-managed service, and guarded pruned snapshot application from ITRocket or Sychonix. Cosmovisor automatic binary downloads remain disabled. The menu includes a predefined verified `v0.1.3` governance-upgrade staging option plus a custom release path; live runtime remains `v0.1.2` until the chain upgrade.
 - Read-only status, logs, peer management, key/balance helpers, validator creation, guarded `tx staking delegate` delegation, and unjail flow.
 - Snapshot application is available through a guarded pruned-snapshot flow; archive snapshots remain disabled until a provider is verified.
 - Faucet requests remain manual; validator, delegation, and unjail transactions require a local preview and explicit operator confirmation.

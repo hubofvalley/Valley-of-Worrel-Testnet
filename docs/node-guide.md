@@ -15,7 +15,7 @@ This guide translates the official Worrell runbook into the Valley paths. Re-che
 | SDK / consensus | Cosmos SDK `v0.53.6` / CometBFT |
 | Genesis SHA256 | `a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd` |
 
-Official source: [RUNNING-A-NODE.md](https://github.com/worrellchain/worrell/blob/main/docs/RUNNING-A-NODE.md).
+Official source: [RUNNING-A-NODE.md](https://github.com/worrellchain/worrell/blob/main/docs/RUNNING-A-NODE.md). The live release remains `v0.1.2`; the Valley Cosmovisor menu also has a verified `v0.1.3` staging option for governance plan `v0.1.3` at block `1186000`.
 
 ## Install the binary
 
