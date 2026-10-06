@@ -45,7 +45,7 @@ After an operation finishes, Valley keeps its output visible and waits for `Pres
 | `3a` | Restarts the selected systemd service. | Short downtime. |
 | `3b` | Stops the selected systemd service. | Node offline until restarted. |
 | `3c` | Stops and verifies the service, creates a verified mode-600 signer backup containing `priv_validator_key.json`, `priv_validator_state.json`, optional `node_key.json`, and checksums, then deletes the exact managed node home after typed confirmation. Supports the normal-user home and root-only `/var/lib/worrell` home. | Destructive. Refuses deletion if path, service, state, or backup checks fail. |
-| `3d` | Creates the same mode-600 signer/state archive without deleting the node home. | Sensitive backup artifact. |
+| `3d` | Creates a mode-600 point-in-time signer/state archive without deleting the node home. It is not an authoritative recovery snapshot: never restore its `priv_validator_state.json` after the node signs again. Stop the node and capture fresh state for signer recovery or migration. | Sensitive backup artifact. |
 
 ### 4. Endpoints
 

@@ -857,8 +857,46 @@ write_signer_backup_manifest() {
     done
 }
 
+verify_signer_backup_archive() {
+    local archive="$1" verify_dir listing manifest rel entry_count entry expected_size expected_sha actual_size actual_sha
+    shift
+    verify_dir=$(mktemp -d "$HOME/.worrell-signer-verify.XXXXXX") || return 1
+    chmod 700 "$verify_dir" || { rm -rf -- "$verify_dir"; return 1; }
+    if ! tar -xzf "$archive" --no-same-owner --no-same-permissions -C "$verify_dir"; then
+        rm -rf -- "$verify_dir"
+        return 1
+    fi
+    listing=$(tar -tzf "$archive" 2>/dev/null) || {
+        rm -rf -- "$verify_dir"
+        return 1
+    }
+    manifest="$verify_dir/manifest.txt"
+    [ -f "$manifest" ] || { rm -rf -- "$verify_dir"; return 1; }
+    grep -Fqx manifest.txt <<< "$listing" || { rm -rf -- "$verify_dir"; return 1; }
+    for rel in "$@"; do
+        grep -Fqx "$rel" <<< "$listing" || { rm -rf -- "$verify_dir"; return 1; }
+        [ -f "$verify_dir/$rel" ] || { rm -rf -- "$verify_dir"; return 1; }
+        entry_count=$(awk -v target="file=$rel" '$1 == target { count++ } END { print count + 0 }' "$manifest")
+        [ "$entry_count" = 1 ] || { rm -rf -- "$verify_dir"; return 1; }
+        entry=$(awk -v target="file=$rel" '$1 == target { print; exit }' "$manifest")
+        expected_size=$(awk '{print $2}' <<< "$entry")
+        expected_size=${expected_size#size=}
+        expected_sha=$(awk '{print $3}' <<< "$entry")
+        expected_sha=${expected_sha#sha256=}
+        [[ "$expected_size" =~ ^[0-9]+$ ]] || { rm -rf -- "$verify_dir"; return 1; }
+        [[ "$expected_sha" =~ ^[0-9a-f]{64}$ ]] || { rm -rf -- "$verify_dir"; return 1; }
+        actual_size=$(stat -c '%s' "$verify_dir/$rel" 2>/dev/null) || { rm -rf -- "$verify_dir"; return 1; }
+        actual_sha=$(sha256sum "$verify_dir/$rel" 2>/dev/null) || { rm -rf -- "$verify_dir"; return 1; }
+        actual_sha=${actual_sha%% *}
+        [ "$actual_size" = "$expected_size" ] || { rm -rf -- "$verify_dir"; return 1; }
+        [ "$actual_sha" = "$expected_sha" ] || { rm -rf -- "$verify_dir"; return 1; }
+    done
+    rm -rf -- "$verify_dir"
+}
+
 create_signer_backup() {
-    local stage archive listing rel
+    local stage archive rel
+
     local -a files=(
         config/priv_validator_key.json
         data/priv_validator_state.json
@@ -909,23 +947,11 @@ create_signer_backup() {
         return 1
     fi
     chmod 600 "$archive" || { rm -rf -- "$stage" "$archive"; return 1; }
-    listing=$(tar -tzf "$archive" 2>/dev/null) || {
+    if ! verify_signer_backup_archive "$archive" "${files[@]}"; then
         rm -rf -- "$stage" "$archive"
-        echo -e "${RED}Signer backup archive verification failed; deletion is refused.${RESET}" >&2
+        echo -e "${RED}Signer backup archive integrity verification failed; deletion is refused.${RESET}" >&2
         return 1
-    }
-    for rel in "${files[@]}"; do
-        grep -Fqx "$rel" <<< "$listing" || {
-            rm -rf -- "$stage" "$archive"
-            echo -e "${RED}Signer backup archive is incomplete; deletion is refused.${RESET}" >&2
-            return 1
-        }
-    done
-    grep -Fqx manifest.txt <<< "$listing" || {
-        rm -rf -- "$stage" "$archive"
-        echo -e "${RED}Signer backup metadata is missing; deletion is refused.${RESET}" >&2
-        return 1
-    }
+    fi
     rm -rf -- "$stage" || {
         rm -f -- "$archive"
         echo -e "${RED}Could not remove the temporary signer backup workspace; deletion is refused.${RESET}" >&2
@@ -938,7 +964,8 @@ backup_node() {
     if ! create_signer_backup; then
         echo -e "${RED}Signer backup failed; no further action was taken.${RESET}" >&2
     else
-        echo -e "${GREEN}Validator signer/state backup created:${RESET} $WORRELL_LAST_BACKUP"
+        echo -e "${GREEN}Point-in-time signer/state archive created:${RESET} $WORRELL_LAST_BACKUP"
+        echo -e "${YELLOW}Do not restore priv_validator_state.json after this node signs again. Stop the node and capture fresh state for signer recovery or migration.${RESET}"
     fi
     prompt_back
     menu
@@ -1170,7 +1197,7 @@ show_guidelines() {
     echo "- 2c creates a validator transaction after showing a reviewable JSON file."
     echo "- 2d submits unjail only after the jail period and root cause are understood."
     echo "- 2f previews balance and validator state, then submits tx staking delegate only after explicit confirmation. Use a positive integer with exactly one uworrell suffix."
-    echo "- 3a/3b restart or stop the node. 3c stops and verifies the service before deletion, then keeps a private signer/state backup. 3d backs up the validator key, validator state, optional node key, and non-secret checksums."
+    echo "- 3a/3b restart or stop the node. 3c stops and verifies the service before deletion, then keeps a private signer/state backup. 3d creates a point-in-time signer/state archive with non-secret checksums; do not restore its signer state after the node signs again. Stop the node and capture fresh state for signer recovery or migration."
     echo "- Never run two instances with the same priv_validator_key.json."
     echo "- RPC/API/gRPC/Prometheus should stay private unless protected."
     prompt_back
@@ -1203,7 +1230,7 @@ menu() {
     echo "   a. Restart node"
     echo "   b. Stop node"
     echo "   c. Delete node (backup first)"
-    echo "   d. Backup validator/node keys"
+    echo "   d. Create point-in-time signer/state archive"
     echo "4. Show Endpoints & Useful Links"
     echo "5. Show Guidelines"
     echo -e "${RED}6. Exit${RESET}"

@@ -11,6 +11,9 @@ HOME="$fixture/home"
 export HOME
 source "$fixture/functions.sh"
 TAR_BIN=$(command -v tar)
+grep -q 'Point-in-time signer/state archive created' "$repo/resources/valleyofWorrel.sh"
+grep -q 'Do not restore priv_validator_state.json after this node signs again' "$repo/resources/valleyofWorrel.sh"
+grep -q 'not an authoritative recovery snapshot' "$repo/docs/usage.md"
 
 make_node() {
     rm -rf -- "$WORRELL_HOME"
@@ -64,6 +67,21 @@ jq -e . "$unpacked/config/node_key.json" >/dev/null
 grep -q '^format=worrell-signer-backup-v1$' "$unpacked/manifest.txt"
 grep -q 'file=data/priv_validator_state.json size=' "$unpacked/manifest.txt"
 rm -rf "$unpacked"
+
+# A readable archive with the expected filenames but a mismatching manifest
+# must not pass the integrity gate.
+tampered_dir=$(mktemp -d)
+mkdir -p "$tampered_dir/config" "$tampered_dir/data"
+cp "$WORRELL_HOME/config/priv_validator_key.json" "$tampered_dir/config/priv_validator_key.json"
+cp "$WORRELL_HOME/data/priv_validator_state.json" "$tampered_dir/data/priv_validator_state.json"
+printf 'format=worrell-signer-backup-v1\ncreated_utc=test\nfile=config/priv_validator_key.json size=%s sha256=%064d\nfile=data/priv_validator_state.json size=%s sha256=%064d\nfile=config/node_key.json size=%s sha256=%064d\n' \
+    "$(stat -c '%s' "$tampered_dir/config/priv_validator_key.json")" 0 \
+    "$(stat -c '%s' "$tampered_dir/data/priv_validator_state.json")" 0 \
+    "$(stat -c '%s' "$WORRELL_HOME/config/node_key.json")" 0 > "$tampered_dir/manifest.txt"
+tampered_archive="$HOME/tampered.tar.gz"
+"$TAR_BIN" -czf "$tampered_archive" -C "$tampered_dir" config data manifest.txt
+! verify_signer_backup_archive "$tampered_archive" config/priv_validator_key.json data/priv_validator_state.json config/node_key.json
+rm -rf "$tampered_dir" "$tampered_archive"
 
 # Required signer state, source copies, and archive creation all fail closed.
 rm -f "$WORRELL_HOME/data/priv_validator_state.json"
