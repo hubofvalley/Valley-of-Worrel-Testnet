@@ -764,29 +764,284 @@ stop_node() {
     menu
 }
 
-backup_node() {
-    local dest temp
-    [ -f "$WORRELL_HOME/config/priv_validator_key.json" ] || { echo -e "${RED}Validator signing key not found.${RESET}"; prompt_back; menu; return; }
-    dest="$HOME/worrell-validator-keys-$(date +%Y%m%d-%H%M%S).tar.gz"
-    temp=$(mktemp -d)
-    cp -p "$WORRELL_HOME/config/priv_validator_key.json" "$temp/priv_validator_key.json"
-    [ ! -f "$WORRELL_HOME/config/node_key.json" ] || cp -p "$WORRELL_HOME/config/node_key.json" "$temp/node_key.json"
-    chmod 600 "$temp"/*
-    if ! tar -czf "$dest" -C "$temp" .; then
-        rm -rf "$temp" "$dest"
-        echo -e "${RED}Key backup failed; no further action taken.${RESET}"
+worrell_root_mode() {
+    [ "${EUID:-$(id -u)}" -eq 0 ]
+}
+
+managed_worrell_home_for_mode() {
+    local root_mode="$1" service_user="${WORRELL_SERVICE_USER:-worrell}"
+    if [ "$root_mode" = yes ]; then
+        [[ "$service_user" =~ ^[a-z_][a-z0-9_-]*[$]?$ ]] || return 1
+        printf '/var/lib/%s\n' "$service_user"
+        return 0
+    fi
+    case "${HOME:-}" in
+        /*) ;;
+        *) return 1 ;;
+    esac
+    [ "$HOME" != "/" ] || return 1
+    case "$HOME" in */) return 1 ;; esac
+    printf '%s/.worrell\n' "$HOME"
+}
+
+managed_worrell_home() {
+    if worrell_root_mode; then
+        managed_worrell_home_for_mode yes
     else
-        chmod 600 "$dest"
-        rm -rf "$temp"
-        echo -e "${GREEN}Validator/node key backup created:${RESET} $dest"
+        managed_worrell_home_for_mode no
+    fi
+}
+
+validate_managed_worrell_home() {
+    local expected canonical
+    expected=$(managed_worrell_home) || {
+        echo -e "${RED}Could not determine the exact managed Worrell home. Refusing the operation.${RESET}" >&2
+        return 1
+    }
+    [ "${WORRELL_HOME:-}" = "$expected" ] || {
+        echo -e "${RED}WORRELL_HOME is not the exact managed Worrell home. Refusing the operation.${RESET}" >&2
+        return 1
+    }
+    if [ ! -d "$WORRELL_HOME" ] || [ -L "$WORRELL_HOME" ]; then
+        echo -e "${RED}Managed Worrell home is missing or is a symlink. Refusing the operation.${RESET}" >&2
+        return 1
+    fi
+    canonical=$(readlink -f -- "$WORRELL_HOME" 2>/dev/null) || {
+        echo -e "${RED}Could not resolve the managed Worrell home safely. Refusing the operation.${RESET}" >&2
+        return 1
+    }
+    [ "$canonical" = "$expected" ] || {
+        echo -e "${RED}Managed Worrell home resolves somewhere unexpected. Refusing the operation.${RESET}" >&2
+        return 1
+    }
+}
+
+validate_signer_material() {
+    local path
+    validate_managed_worrell_home || return 1
+    for path in "$WORRELL_HOME/config" "$WORRELL_HOME/data"; do
+        if [ ! -d "$path" ] || [ -L "$path" ]; then
+            echo -e "${RED}Required Worrell signer directory is missing or unsafe: $path${RESET}" >&2
+            return 1
+        fi
+    done
+    for path in \
+        "$WORRELL_HOME/config/priv_validator_key.json" \
+        "$WORRELL_HOME/data/priv_validator_state.json"; do
+        if [ ! -f "$path" ] || [ -L "$path" ] || [ ! -s "$path" ]; then
+            echo -e "${RED}Required Worrell signer material is missing or unsafe. Refusing the operation.${RESET}" >&2
+            return 1
+        fi
+    done
+    path="$WORRELL_HOME/config/node_key.json"
+    if [ -e "$path" ] || [ -L "$path" ]; then
+        if [ ! -f "$path" ] || [ -L "$path" ] || [ ! -s "$path" ]; then
+            echo -e "${RED}Optional Worrell node key is present but unsafe. Refusing the operation.${RESET}" >&2
+            return 1
+        fi
+    fi
+}
+
+write_signer_backup_manifest() {
+    local stage="$1" rel checksum size
+    shift
+    printf 'format=worrell-signer-backup-v1\n'
+    printf 'created_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    for rel in "$@"; do
+        checksum=$(sha256sum "$stage/$rel" 2>/dev/null) || return 1
+        checksum=${checksum%% *}
+        size=$(stat -c '%s' "$stage/$rel" 2>/dev/null) || return 1
+        [[ "$checksum" =~ ^[0-9a-f]{64}$ ]] || return 1
+        [[ "$size" =~ ^[0-9]+$ ]] || return 1
+        printf 'file=%s size=%s sha256=%s\n' "$rel" "$size" "$checksum"
+    done
+}
+
+create_signer_backup() {
+    local stage archive listing rel
+    local -a files=(
+        config/priv_validator_key.json
+        data/priv_validator_state.json
+    )
+    WORRELL_LAST_BACKUP=""
+    validate_signer_material || return 1
+    if [ -e "$WORRELL_HOME/config/node_key.json" ]; then
+        files+=(config/node_key.json)
+    fi
+    stage=$(mktemp -d "$HOME/.worrell-signer-backup.XXXXXX") || {
+        echo -e "${RED}Could not create a private signer backup workspace.${RESET}" >&2
+        return 1
+    }
+    chmod 700 "$stage" || { rm -rf -- "$stage"; return 1; }
+    if ! mkdir -m 700 "$stage/config" "$stage/data"; then
+        rm -rf -- "$stage"
+        echo -e "${RED}Could not create the private signer backup layout.${RESET}" >&2
+        return 1
+    fi
+    for rel in "${files[@]}"; do
+        if ! install -m 0600 "$WORRELL_HOME/$rel" "$stage/$rel"; then
+            rm -rf -- "$stage"
+            echo -e "${RED}Could not capture required signer backup material; deletion is refused.${RESET}" >&2
+            return 1
+        fi
+    done
+    for rel in "${files[@]}"; do
+        if ! jq -e . "$stage/$rel" >/dev/null 2>&1; then
+            rm -rf -- "$stage"
+            echo -e "${RED}Signer backup material is not valid JSON; deletion is refused.${RESET}" >&2
+            return 1
+        fi
+    done
+    if ! write_signer_backup_manifest "$stage" "${files[@]}" > "$stage/manifest.txt"; then
+        rm -rf -- "$stage"
+        echo -e "${RED}Could not create signer backup metadata; deletion is refused.${RESET}" >&2
+        return 1
+    fi
+    chmod 600 "$stage/manifest.txt" || { rm -rf -- "$stage"; return 1; }
+    archive=$(mktemp "$HOME/worrell-validator-keys-$(date +%Y%m%d-%H%M%S)-XXXXXX.tar.gz") || {
+        rm -rf -- "$stage"
+        echo -e "${RED}Could not create a private signer backup artifact.${RESET}" >&2
+        return 1
+    }
+    if ! tar -czf "$archive" -C "$stage" config data manifest.txt; then
+        rm -rf -- "$stage" "$archive"
+        echo -e "${RED}Signer backup archive creation failed; deletion is refused.${RESET}" >&2
+        return 1
+    fi
+    chmod 600 "$archive" || { rm -rf -- "$stage" "$archive"; return 1; }
+    listing=$(tar -tzf "$archive" 2>/dev/null) || {
+        rm -rf -- "$stage" "$archive"
+        echo -e "${RED}Signer backup archive verification failed; deletion is refused.${RESET}" >&2
+        return 1
+    }
+    for rel in "${files[@]}"; do
+        grep -Fqx "$rel" <<< "$listing" || {
+            rm -rf -- "$stage" "$archive"
+            echo -e "${RED}Signer backup archive is incomplete; deletion is refused.${RESET}" >&2
+            return 1
+        }
+    done
+    grep -Fqx manifest.txt <<< "$listing" || {
+        rm -rf -- "$stage" "$archive"
+        echo -e "${RED}Signer backup metadata is missing; deletion is refused.${RESET}" >&2
+        return 1
+    }
+    rm -rf -- "$stage" || {
+        rm -f -- "$archive"
+        echo -e "${RED}Could not remove the temporary signer backup workspace; deletion is refused.${RESET}" >&2
+        return 1
+    }
+    WORRELL_LAST_BACKUP="$archive"
+}
+
+backup_node() {
+    if ! create_signer_backup; then
+        echo -e "${RED}Signer backup failed; no further action was taken.${RESET}" >&2
+    else
+        echo -e "${GREEN}Validator signer/state backup created:${RESET} $WORRELL_LAST_BACKUP"
     fi
     prompt_back
     menu
 }
 
+service_is_inactive_for_delete() {
+    local state
+    state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null) || true
+    case "$state" in
+        inactive|dead|failed) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+stop_service_for_delete() {
+    if ! sudo systemctl stop "$WORRELL_SERVICE_NAME" 2>/dev/null; then
+        echo -e "${RED}Could not stop $WORRELL_SERVICE_NAME; deletion refused.${RESET}" >&2
+        return 1
+    fi
+    if ! service_is_inactive_for_delete; then
+        echo -e "${RED}$WORRELL_SERVICE_NAME is not confirmed inactive; deletion refused.${RESET}" >&2
+        return 1
+    fi
+}
+
+worrell_service_unit_path() {
+    printf '/etc/systemd/system/%s.service\n' "$1"
+}
+
+prepare_delete_unit_backup() {
+    local unit_path="$1" backup_name
+    WORRELL_DELETE_UNIT_EXISTED=no
+    WORRELL_DELETE_UNIT_BACKUP_DIR=""
+    WORRELL_DELETE_UNIT_BACKUP_PATH=""
+    if [ -L "$unit_path" ]; then
+        echo -e "${RED}The Worrell service unit is a symlink; deletion refused.${RESET}" >&2
+        return 1
+    fi
+    if [ -e "$unit_path" ]; then
+        if [ ! -f "$unit_path" ] || [ ! -s "$unit_path" ]; then
+            echo -e "${RED}The Worrell service unit is missing, empty, or not a regular file; deletion refused.${RESET}" >&2
+            return 1
+        fi
+        WORRELL_DELETE_UNIT_BACKUP_DIR=$(mktemp -d "$HOME/.worrell-delete-unit.XXXXXX") || {
+            echo -e "${RED}Could not create a private service-unit rollback workspace; deletion refused.${RESET}" >&2
+            return 1
+        }
+        chmod 700 "$WORRELL_DELETE_UNIT_BACKUP_DIR" || {
+            rm -rf -- "$WORRELL_DELETE_UNIT_BACKUP_DIR"
+            WORRELL_DELETE_UNIT_BACKUP_DIR=""
+            return 1
+        }
+        backup_name=${unit_path##*/}
+        WORRELL_DELETE_UNIT_BACKUP_PATH="$WORRELL_DELETE_UNIT_BACKUP_DIR/$backup_name"
+        if ! install -m 0600 "$unit_path" "$WORRELL_DELETE_UNIT_BACKUP_PATH" || [ ! -s "$WORRELL_DELETE_UNIT_BACKUP_PATH" ]; then
+            rm -rf -- "$WORRELL_DELETE_UNIT_BACKUP_DIR"
+            WORRELL_DELETE_UNIT_BACKUP_DIR=""
+            WORRELL_DELETE_UNIT_BACKUP_PATH=""
+            echo -e "${RED}Could not capture the service unit for rollback; deletion refused.${RESET}" >&2
+            return 1
+        fi
+        WORRELL_DELETE_UNIT_EXISTED=yes
+    fi
+}
+
+restore_deleted_unit() {
+    [ "${WORRELL_DELETE_UNIT_EXISTED:-no}" = yes ] || return 0
+    if ! sudo install -m 0644 -- "$WORRELL_DELETE_UNIT_BACKUP_PATH" "$WORRELL_DELETE_UNIT_PATH"; then
+        echo -e "${RED}Could not restore the Worrell service unit; the node home remains preserved.${RESET}" >&2
+        return 1
+    fi
+    if ! sudo systemctl daemon-reload; then
+        echo -e "${RED}The Worrell service unit was restored, but systemd reload still failed; the node home remains preserved.${RESET}" >&2
+        return 1
+    fi
+}
+
+cleanup_deleted_unit_backup() {
+    [ -z "${WORRELL_DELETE_UNIT_BACKUP_DIR:-}" ] || rm -rf -- "$WORRELL_DELETE_UNIT_BACKUP_DIR"
+    WORRELL_DELETE_UNIT_BACKUP_DIR=""
+    WORRELL_DELETE_UNIT_BACKUP_PATH=""
+    WORRELL_DELETE_UNIT_EXISTED=no
+}
+
 delete_node() {
-    local answer backup temp
-    echo -e "${RED}BACK UP validator keys before deleting. This stops the service and removes the node home.${RESET}"
+    local answer unit_path
+    validate_managed_worrell_home || { prompt_back; menu; return; }
+    is_valid_service_name "$WORRELL_SERVICE_NAME" || {
+        echo -e "${RED}Service name is invalid or ambiguous; deletion refused.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    }
+    case "$WORRELL_SERVICE_NAME" in
+        -*|.*|*..*)
+            echo -e "${RED}Service name is unsafe; deletion refused.${RESET}" >&2
+            prompt_back
+            menu
+            return
+            ;;
+    esac
+    validate_signer_material || { prompt_back; menu; return; }
+    echo -e "${RED}BACK UP validator signer and state before deleting. This stops the service and removes the node home.${RESET}"
     read -r -p "Type DELETE to continue: " answer
     if [ "$answer" != DELETE ]; then
         echo -e "${YELLOW}Deletion cancelled. No node data was changed.${RESET}"
@@ -794,37 +1049,109 @@ delete_node() {
         menu
         return
     fi
-    case "$WORRELL_HOME" in
-        "$HOME/.worrell"|"$HOME"/*|/var/lib/${WORRELL_SERVICE_USER:-worrell}) ;;
-        *)
-            echo -e "${RED}Refusing deletion outside the current user's home.${RESET}"
-            prompt_back
-            menu
-            return
-            ;;
-    esac
-    if [ ! -f "$WORRELL_HOME/config/priv_validator_key.json" ]; then
-        echo -e "${RED}Signing key is missing; refusing deletion without a verified backup source.${RESET}"
+    if ! stop_service_for_delete; then
         prompt_back
         menu
         return
     fi
-    backup="$HOME/worrell-validator-keys-$(date +%Y%m%d-%H%M%S).tar.gz"
-    temp=$(mktemp -d)
-    if ! cp -p "$WORRELL_HOME/config/priv_validator_key.json" "$temp/priv_validator_key.json" || ! tar -czf "$backup" -C "$temp" .; then
-        rm -rf "$temp" "$backup"
-        echo -e "${RED}Key backup failed; deletion refused.${RESET}"
+    # Re-check the exact path and signer inputs after downtime, before capture.
+    validate_signer_material || { prompt_back; menu; return; }
+    if ! create_signer_backup; then
+        echo -e "${RED}Signer backup failed; deletion refused.${RESET}" >&2
         prompt_back
         menu
         return
     fi
-    chmod 600 "$backup"; rm -rf "$temp"
-    sudo systemctl disable --now "$WORRELL_SERVICE_NAME" 2>/dev/null || true
-    sudo rm -f "/etc/systemd/system/${WORRELL_SERVICE_NAME}.service"
-    rm -rf "$WORRELL_HOME"
-    sed -i -E '/^export WORRELL_(CHAIN_ID|HOME|SERVICE_NAME|PORT_PREFIX|MONIKER|TARGET_VERSION|UNSAFE_SKIP_BACKUP|ENV_FILE|SERVICE_USER)=/d' "$HOME/.bash_profile" 2>/dev/null || true
-    sudo systemctl daemon-reload
-    echo -e "${GREEN}Node removed. Key backup: $backup${RESET}"
+    if ! service_is_inactive_for_delete; then
+        echo -e "${RED}$WORRELL_SERVICE_NAME became active again; deletion refused.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    fi
+    unit_path=$(worrell_service_unit_path "$WORRELL_SERVICE_NAME") || {
+        echo -e "${RED}Could not resolve the Worrell service unit path; deletion refused.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    }
+    [ -n "$unit_path" ] || {
+        echo -e "${RED}The Worrell service unit path is empty; deletion refused.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    }
+    WORRELL_DELETE_UNIT_PATH="$unit_path"
+    if ! prepare_delete_unit_backup "$unit_path"; then
+        prompt_back
+        menu
+        return
+    fi
+    if ! sudo systemctl disable "$WORRELL_SERVICE_NAME" 2>/dev/null; then
+        cleanup_deleted_unit_backup
+        echo -e "${RED}Could not disable $WORRELL_SERVICE_NAME; deletion refused.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    fi
+    if ! service_is_inactive_for_delete; then
+        cleanup_deleted_unit_backup
+        echo -e "${RED}$WORRELL_SERVICE_NAME is not confirmed inactive after disable; deletion refused.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    fi
+    if ! sudo rm -f -- "$unit_path"; then
+        cleanup_deleted_unit_backup
+        echo -e "${RED}Could not remove the Worrell service unit; node home was preserved.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    fi
+    if ! sudo systemctl daemon-reload; then
+        if ! restore_deleted_unit; then
+            echo -e "${RED}Service-unit rollback was not fully confirmed; node home remains preserved.${RESET}" >&2
+        fi
+        cleanup_deleted_unit_backup
+        echo -e "${RED}Could not reload systemd after removing the service unit; node home was preserved.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    fi
+    if ! service_is_inactive_for_delete; then
+        if ! restore_deleted_unit; then
+            echo -e "${RED}Service-unit rollback was not fully confirmed; node home remains preserved.${RESET}" >&2
+        fi
+        cleanup_deleted_unit_backup
+        echo -e "${RED}$WORRELL_SERVICE_NAME is not confirmed inactive before home removal; node home was preserved.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    fi
+    if ! validate_managed_worrell_home; then
+        if ! restore_deleted_unit; then
+            echo -e "${RED}Service-unit rollback was not fully confirmed; node home remains preserved.${RESET}" >&2
+        fi
+        cleanup_deleted_unit_backup
+        echo -e "${RED}Managed Worrell home changed or became unsafe; deletion refused.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    fi
+    if ! rm -rf -- "$WORRELL_HOME" || [ -e "$WORRELL_HOME" ] || [ -L "$WORRELL_HOME" ]; then
+        if ! restore_deleted_unit; then
+            echo -e "${RED}Service-unit rollback was not fully confirmed; signer data remains preserved as far as possible.${RESET}" >&2
+        fi
+        cleanup_deleted_unit_backup
+        echo -e "${RED}Could not remove the exact managed Worrell home completely. Signer backup remains at $WORRELL_LAST_BACKUP.${RESET}" >&2
+        prompt_back
+        menu
+        return
+    fi
+    cleanup_deleted_unit_backup
+    if [ -f "$HOME/.bash_profile" ] && ! sed -i -E '/^export WORRELL_(CHAIN_ID|HOME|SERVICE_NAME|PORT_PREFIX|MONIKER|TARGET_VERSION|UNSAFE_SKIP_BACKUP|ENV_FILE|SERVICE_USER)=/d' "$HOME/.bash_profile" 2>/dev/null; then
+        echo -e "${YELLOW}Node was removed, but the shell profile could not be cleaned. Signer backup: $WORRELL_LAST_BACKUP${RESET}" >&2
+    fi
+    echo -e "${GREEN}Node removed. Key backup: $WORRELL_LAST_BACKUP (includes signer state and optional node key).${RESET}"
     prompt_back
     menu
 }
@@ -843,7 +1170,7 @@ show_guidelines() {
     echo "- 2c creates a validator transaction after showing a reviewable JSON file."
     echo "- 2d submits unjail only after the jail period and root cause are understood."
     echo "- 2f previews balance and validator state, then submits tx staking delegate only after explicit confirmation. Use a positive integer with exactly one uworrell suffix."
-    echo "- 3a/3b restart or stop the node. 3c deletes after a successful key backup and typed confirmation. 3d backs up validator/node keys only."
+    echo "- 3a/3b restart or stop the node. 3c stops and verifies the service before deletion, then keeps a private signer/state backup. 3d backs up the validator key, validator state, optional node key, and non-secret checksums."
     echo "- Never run two instances with the same priv_validator_key.json."
     echo "- RPC/API/gRPC/Prometheus should stay private unless protected."
     prompt_back
