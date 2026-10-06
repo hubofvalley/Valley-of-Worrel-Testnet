@@ -74,6 +74,7 @@ tampered_dir=$(mktemp -d)
 mkdir -p "$tampered_dir/config" "$tampered_dir/data"
 cp "$WORRELL_HOME/config/priv_validator_key.json" "$tampered_dir/config/priv_validator_key.json"
 cp "$WORRELL_HOME/data/priv_validator_state.json" "$tampered_dir/data/priv_validator_state.json"
+cp "$WORRELL_HOME/config/node_key.json" "$tampered_dir/config/node_key.json"
 printf 'format=worrell-signer-backup-v1\ncreated_utc=test\nfile=config/priv_validator_key.json size=%s sha256=%064d\nfile=data/priv_validator_state.json size=%s sha256=%064d\nfile=config/node_key.json size=%s sha256=%064d\n' \
     "$(stat -c '%s' "$tampered_dir/config/priv_validator_key.json")" 0 \
     "$(stat -c '%s' "$tampered_dir/data/priv_validator_state.json")" 0 \
