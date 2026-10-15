@@ -31,6 +31,7 @@
         "snapshot",
         "pruning",
         "cosmovisor",
+        "cosmovisor_handoff_verification",
         "backup",
         "delete"
       ],
@@ -74,7 +75,8 @@
     }
   ],
   "runtime": {
-    "remote_helpers": "pinned_commit"
+    "remote_helpers": "pinned_commit",
+    "unsafe_skip_backup_default": false
   },
   "live_deployment": {
     "verified_date": "2026-09-11",

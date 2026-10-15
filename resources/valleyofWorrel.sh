@@ -29,7 +29,7 @@ if [ -z "${WORRELL_SERVICE_USER:-}" ]; then
 fi
 WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-17}
 WORRELL_TARGET_VERSION=${WORRELL_TARGET_VERSION:-v0.1.2}
-WORRELL_UNSAFE_SKIP_BACKUP=${WORRELL_UNSAFE_SKIP_BACKUP:-true}
+WORRELL_UNSAFE_SKIP_BACKUP=${WORRELL_UNSAFE_SKIP_BACKUP:-false}
 readonly WORRELL_UPGRADE_V0_1_3="v0.1.3"
 readonly WORRELL_UPGRADE_PLAN_V0_1_3="v0.1.3"
 readonly WORRELL_UPGRADE_HEIGHT_V0_1_3="1186000"
@@ -37,13 +37,13 @@ WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://lightnode-rpc-worrell.grandvall
 WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://lightnode-rpc-worrell.grandvalleys.com,https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
 WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
 WORRELL_PUBLIC_PEER=${WORRELL_PUBLIC_PEER:-e812f08760b18ed774369e899763735f80179f76@peer-worrell.grandvalleys.com:17656}
-readonly VALLEY_INSTALLER_SHA256="b0f21d67a4ffb0f721e47130bb4ffc8dcf40292d8648bff7adcfcacc70a98b52"
+readonly VALLEY_INSTALLER_SHA256="af9d55468d805549fe5557abd3c06e1e7643a70e8426f0ff171def9aa962be33"
 readonly VALLEY_UPDATER_SHA256="fa074336f167c6189e05847bc87e448994bfdc335003ec5c20cb2d47b2243c14"
-readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="7b384a62d99a8a068ede9ef3145eb2a5d97121b534f7b3c565170d011aa20b0d"
-readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="c2579a36e6a11fdba35b8d9c1ed700d72b9833f5e5f70a7d91abf085d6e54a31"
+readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="c8551419467995a738313160b94331630b0f6f536059d2829010779b956c5a32"
+readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="3f5cd5a1f56638936a76bf7a2d550ce458f28bd7458837ca9ec2f7346d0748b6"
 readonly VALLEY_SNAPSHOT_SHA256="3b10c2e7f81b72d6d13b1b5598527c6608deccaf90240af0b2b089dd7e22931b"
-readonly VALLEY_SCRIPT_COMMIT="d4235d48f4cac2a0d1324a56a7c34973cf7f1ec1"
-readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/d4235d48f4cac2a0d1324a56a7c34973cf7f1ec1/resources"
+readonly VALLEY_SCRIPT_COMMIT="507d0fad69fc9ecd78ce6674368ac36604ba0f1a"
+readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/507d0fad69fc9ecd78ce6674368ac36604ba0f1a/resources"
 
 export WORRELL_HOME WORRELL_ENV_FILE WORRELL_CHAIN_ID WORRELL_SERVICE_NAME
 export WORRELL_SERVICE_USER WORRELL_PORT_PREFIX WORRELL_TARGET_VERSION WORRELL_UNSAFE_SKIP_BACKUP
@@ -263,6 +263,175 @@ install_node() {
     menu
 }
 
+valid_cosmovisor_verify_name() {
+    [ -n "$1" ] || return 1
+    case "$1" in
+        *$'\n'*|*$'\r'*|*/*|.|..) return 1 ;;
+    esac
+}
+
+cosmovisor_upgrade_path() {
+    python3 - "$1" <<'PYVERIFY'
+import sys
+from urllib.parse import quote
+
+name = sys.argv[1]
+if not name or "\n" in name or "\r" in name or "/" in name or name in (".", ".."):
+    raise SystemExit(1)
+print(quote(name.lower(), safe="-_.~"))
+PYVERIFY
+}
+
+cosmovisor_version_matches() {
+    local binary="$1" expected="$2" output
+    output=$("$binary" version --long 2>&1) || {
+        echo -e "${RED}Could not execute $binary version --long.${RESET}" >&2
+        printf '%s\n' "$output" >&2
+        return 1
+    }
+    if ! grep -F -- "$expected" <<< "$output" >/dev/null; then
+        echo -e "${RED}Binary version mismatch: expected $expected from $binary.${RESET}" >&2
+        printf '%s\n' "$output" >&2
+        return 1
+    fi
+}
+
+verify_cosmovisor_service() {
+    local state first_restarts second_restarts stability_seconds="${WORRELL_COSMOVISOR_STABILITY_SECONDS:-3}"
+    [[ "$stability_seconds" =~ ^[0-9]+$ ]] || {
+        echo -e "${RED}WORRELL_COSMOVISOR_STABILITY_SECONDS must be a non-negative integer.${RESET}" >&2
+        return 1
+    }
+    state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+    if [ "$state" != active ]; then
+        echo -e "${RED}${WORRELL_SERVICE_NAME} is not active (state: ${state:-unknown}); inspect journalctl before retrying.${RESET}" >&2
+        return 1
+    fi
+    first_restarts=$(sudo systemctl show "$WORRELL_SERVICE_NAME" -p NRestarts --value 2>/dev/null | tr -d '[:space:]' || true)
+    if ! [[ "$first_restarts" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}Could not read ${WORRELL_SERVICE_NAME} restart count; refusing to declare the handoff healthy.${RESET}" >&2
+        return 1
+    fi
+    sleep "$stability_seconds"
+    state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+    second_restarts=$(sudo systemctl show "$WORRELL_SERVICE_NAME" -p NRestarts --value 2>/dev/null | tr -d '[:space:]' || true)
+    if [ "$state" != active ] || ! [[ "$second_restarts" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}${WORRELL_SERVICE_NAME} became unhealthy during the stability check; inspect journalctl before recovery.${RESET}" >&2
+        return 1
+    fi
+    if (( second_restarts > first_restarts )); then
+        echo -e "${RED}Cosmovisor restart-loop guard triggered: NRestarts increased from $first_restarts to $second_restarts.${RESET}" >&2
+        echo -e "${YELLOW}Keep data/upgrade-info.json intact and inspect journalctl -u ${WORRELL_SERVICE_NAME} before recovery.${RESET}" >&2
+        return 1
+    fi
+}
+
+verify_cosmovisor_handoff() {
+    local phase="$1" expected_version="$2" expected_name="$3" expected_height="${4:-}"
+    local cosmovisor_home="$WORRELL_HOME/cosmovisor" info="$WORRELL_HOME/data/upgrade-info.json"
+    local encoded_name target target_binary current current_target expected_target
+    local current_binary info_name info_height info_hash_before info_hash_after
+    case "$phase" in
+        preflight|post-upgrade) ;;
+        *) echo -e "${RED}Cosmovisor verification phase must be preflight or post-upgrade.${RESET}" >&2; return 1 ;;
+    esac
+    [[ "$expected_version" =~ ^v[0-9A-Za-z._-]+$ ]] || {
+        echo -e "${RED}Invalid expected Worrell release version: $expected_version${RESET}" >&2
+        return 1
+    }
+    valid_cosmovisor_verify_name "$expected_name" || {
+        echo -e "${RED}Invalid expected Cosmovisor plan name: $expected_name${RESET}" >&2
+        return 1
+    }
+    if [ -n "$expected_height" ] && ! [[ "$expected_height" =~ ^[0-9]+$ ]] ; then
+        echo -e "${RED}Expected upgrade height must be a non-negative integer: $expected_height${RESET}" >&2
+        return 1
+    fi
+    [ -d "$cosmovisor_home" ] || { echo -e "${RED}Cosmovisor home not found: $cosmovisor_home${RESET}" >&2; return 1; }
+    [ -d "$cosmovisor_home/genesis" ] || { echo -e "${RED}Cosmovisor genesis directory not found: $cosmovisor_home/genesis${RESET}" >&2; return 1; }
+    encoded_name=$(cosmovisor_upgrade_path "$expected_name") || {
+        echo -e "${RED}Could not safely encode the Cosmovisor plan name.${RESET}" >&2
+        return 1
+    }
+    target="$cosmovisor_home/upgrades/$encoded_name"
+    target_binary="$target/bin/worrelld"
+    [ -d "$target" ] || { echo -e "${RED}Expected upgrade directory is missing: $target${RESET}" >&2; return 1; }
+    [ -x "$target_binary" ] || { echo -e "${RED}Expected upgrade binary is missing or not executable: $target_binary${RESET}" >&2; return 1; }
+    cosmovisor_version_matches "$target_binary" "$expected_version" || return 1
+
+    if [ -f "$info" ]; then
+        info_hash_before=$(sha256sum "$info" | awk '{print $1}')
+        if ! info_name=$(jq -er '.name | strings' "$info" 2>/dev/null); then
+            echo -e "${RED}Cannot read the upgrade plan name from $info.${RESET}" >&2
+            return 1
+        fi
+        [ "$info_name" = "$expected_name" ] || {
+            echo -e "${RED}Upgrade plan mismatch: upgrade-info.json names '$info_name', expected '$expected_name'.${RESET}" >&2
+            return 1
+        }
+        if ! info_height=$(jq -er '(.height // empty) | tostring' "$info" 2>/dev/null); then
+            echo -e "${RED}Cannot read the upgrade height from $info.${RESET}" >&2
+            return 1
+        fi
+        if [ -n "$expected_height" ] && [ "$info_height" != "$expected_height" ]; then
+            echo -e "${RED}Upgrade height mismatch: upgrade-info.json has '$info_height', expected '$expected_height'.${RESET}" >&2
+            return 1
+        fi
+    elif [ "$phase" = post-upgrade ]; then
+        echo -e "${RED}Post-upgrade verification requires $info; it was not found.${RESET}" >&2
+        return 1
+    fi
+    if [ "$phase" = preflight ] && [ -e "$info" ] && [ -z "$expected_height" ]; then
+        echo -e "${RED}Preflight found pending $info; resolve the existing handoff before staging another governance upgrade.${RESET}" >&2
+        return 1
+    fi
+
+    current="$cosmovisor_home/current"
+    [ -L "$current" ] || {
+        echo -e "${RED}Cosmovisor current is not a symlink; refusing to declare the handoff healthy: $current${RESET}" >&2
+        return 1
+    }
+    current_target=$(readlink -f "$current" 2>/dev/null || true)
+    expected_target=$(readlink -f "$target" 2>/dev/null || true)
+    [ -n "$current_target" ] && [ -n "$expected_target" ] || {
+        echo -e "${RED}Could not resolve the Cosmovisor current or expected target.${RESET}" >&2
+        return 1
+    }
+    if [ "$phase" = preflight ]; then
+        case "$current_target" in
+            "$cosmovisor_home/genesis"|"$cosmovisor_home/upgrades"/*) ;;
+            *)
+                echo -e "${RED}Preflight found current outside the Cosmovisor home: $current_target.${RESET}" >&2
+                return 1
+                ;;
+        esac
+        [ "$current_target" != "$expected_target" ] || {
+            echo -e "${RED}Preflight found current already promoted to $target; staging is not activation.${RESET}" >&2
+            return 1
+        }
+    else
+        [ "$current_target" = "$expected_target" ] || {
+            echo -e "${RED}Stale Cosmovisor current: expected $current to resolve to $target, found $current_target.${RESET}" >&2
+            echo -e "${YELLOW}Keep $info intact; inspect the service and promote only after verifying the exact binary.${RESET}" >&2
+            return 1
+        }
+        current_binary="$current/bin/worrelld"
+        [ -x "$current_binary" ] || { echo -e "${RED}Active Cosmovisor binary is missing or not executable: $current_binary${RESET}" >&2; return 1; }
+        cosmovisor_version_matches "$current_binary" "$expected_version" || return 1
+    fi
+    if [ "$phase" = post-upgrade ]; then
+        verify_cosmovisor_service || return 1
+    fi
+    if [ -n "${info_hash_before:-}" ]; then
+        info_hash_after=$(sha256sum "$info" | awk '{print $1}')
+        [ "$info_hash_before" = "$info_hash_after" ] || {
+            echo -e "${RED}$info changed during verification; refusing to continue.${RESET}" >&2
+            return 1
+        }
+    fi
+    echo -e "${GREEN}Cosmovisor $phase verification passed: plan $expected_name, release $expected_version, current $current_target.${RESET}"
+}
+
 cosmovisor_active() {
     [ "$(runtime_mode)" = cosmovisor ]
 }
@@ -347,11 +516,47 @@ stage_cosmovisor_upgrade() {
             ;;
     esac
     if [[ "${answer,,}" == yes ]]; then
-        if ! run_pinned_child worrelld_cosmovisor_upgrade.sh "$VALLEY_COSMOVISOR_UPGRADE_SHA256" "$version" "$upgrade_name" "$upgrade_height"; then
+        if run_pinned_child worrelld_cosmovisor_upgrade.sh "$VALLEY_COSMOVISOR_UPGRADE_SHA256" "$version" "$upgrade_name" "$upgrade_height"; then
+            if ! verify_cosmovisor_handoff preflight "$version" "$upgrade_name" "$upgrade_height"; then
+                echo -e "${RED}Staging completed but preflight verification failed. Do not restart the service; review the diagnostics above.${RESET}" >&2
+            fi
+        else
             echo -e "${RED}Cosmovisor upgrade staging failed. Review the output above before retrying.${RESET}" >&2
         fi
     else
         echo -e "${YELLOW}Cosmovisor upgrade staging cancelled. No upgrade binary was changed.${RESET}"
+    fi
+    prompt_back
+    menu
+}
+
+verify_cosmovisor_menu() {
+    local choice phase version upgrade_name upgrade_height default_version default_name default_height
+    default_version="$WORRELL_UPGRADE_V0_1_3"
+    default_name="$WORRELL_UPGRADE_PLAN_V0_1_3"
+    default_height=""
+    echo -e "${ORANGE}Verify Cosmovisor handoff${RESET}"
+    echo "1. Verify staged binary before the upgrade"
+    echo "2. Verify post-upgrade activation and recovery"
+    echo "b. Back"
+    read -r -p "Choose: " choice
+    case "${choice,,}" in
+        1) phase=preflight ;;
+        2) phase=post-upgrade ;;
+        b|"") manage_cosmovisor; return ;;
+        *) echo -e "${RED}Invalid option.${RESET}"; prompt_back; menu; return ;;
+    esac
+    read -r -p "Release version [$default_version]: " version
+    version="${version:-$default_version}"
+    read -r -p "Exact governance plan / upgrade name [$default_name]: " upgrade_name
+    upgrade_name="${upgrade_name:-$default_name}"
+    if [ "$upgrade_name" = "$default_name" ]; then
+        default_height="$WORRELL_UPGRADE_HEIGHT_V0_1_3"
+    fi
+    read -r -p "Expected upgrade height [${default_height:-none}; leave empty if unknown]: " upgrade_height
+    upgrade_height="${upgrade_height:-$default_height}"
+    if ! verify_cosmovisor_handoff "$phase" "$version" "$upgrade_name" "$upgrade_height"; then
+        echo -e "${RED}Cosmovisor verification failed. Keep data/upgrade-info.json intact and review the diagnostics above.${RESET}" >&2
     fi
     prompt_back
     menu
@@ -362,8 +567,9 @@ manage_cosmovisor() {
     echo "1. Migrate current node to Cosmovisor"
     echo "2. Show Cosmovisor status"
     echo "3. Stage a verified upgrade binary"
-    echo "4. Back"
-    read -r -p "Choose an option (1-4): " choice
+    echo "4. Verify staged or completed handoff"
+    echo "5. Back"
+    read -r -p "Choose an option (1-5): " choice
     case "$choice" in
         1)
             if ! run_pinned_child cosmovisor_migration.sh "$VALLEY_COSMOVISOR_MIGRATION_SHA256"; then
@@ -379,7 +585,8 @@ manage_cosmovisor() {
             fi
             stage_cosmovisor_upgrade
             ;;
-        4) menu ;;
+        4) verify_cosmovisor_menu ;;
+        5) menu ;;
         *)
             echo -e "${RED}Invalid option.${RESET}"
             prompt_back

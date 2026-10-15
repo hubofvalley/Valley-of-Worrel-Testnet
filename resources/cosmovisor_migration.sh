@@ -28,7 +28,7 @@ readonly COSMOVISOR_VERSION="${WORRELL_COSMOVISOR_VERSION:-v1.7.3}"
 COSMOVISOR_BIN="$BINARY_DIR/cosmovisor"
 readonly SYSTEMD_UNIT_DIR="${WORRELL_SYSTEMD_UNIT_DIR:-/etc/systemd/system}"
 if [ "$ROOT_MODE" = yes ]; then sudo() { "$@"; }; fi
-WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-true}"
+WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-false}"
 case "$WORRELL_UNSAFE_SKIP_BACKUP" in
     true|false) ;;
     *) echo -e "${RED}WORRELL_UNSAFE_SKIP_BACKUP must be true or false.${RESET}" >&2; exit 1 ;;
