@@ -54,12 +54,22 @@ $WORRELL_HOME/cosmovisor/
 
 For a normal node user, `$WORRELL_HOME` is `~/.worrell`; in root-only mode it is `/var/lib/worrell`.
 
-The service sets `DAEMON_NAME=worrelld`, `DAEMON_HOME=$WORRELL_HOME`, `DAEMON_ALLOW_DOWNLOAD_BINARIES=false`, `DAEMON_RESTART_AFTER_UPGRADE=true`, `DAEMON_DATA_BACKUP_DIR=$WORRELL_HOME/cosmovisor/backup`, and `UNSAFE_SKIP_BACKUP=true` by default as requested for this deployment. This skips Cosmovisor's application-data backup during upgrades. Set `WORRELL_UNSAFE_SKIP_BACKUP=false` before installation or migration when rollback protection is required, especially on validator nodes.
+The service sets `DAEMON_NAME=worrelld`, `DAEMON_HOME=$WORRELL_HOME`, `DAEMON_ALLOW_DOWNLOAD_BINARIES=false`, `DAEMON_RESTART_AFTER_UPGRADE=true`, `DAEMON_DATA_BACKUP_DIR=$WORRELL_HOME/cosmovisor/backup`, and `UNSAFE_SKIP_BACKUP=false` by default. This keeps Cosmovisor's application-data backup enabled for validator-capable installation and migration paths. A lightnode or other non-validator operator may explicitly opt in to skipping that backup with `WORRELL_UNSAFE_SKIP_BACKUP=true`; an existing explicit environment value is preserved.
+
+## Verify the hand-off
+
+Staging is not activation. After a successful staging run, `current` remains on the previously active binary until the chain's governance or emergency plan is handled. Use Valley -> Node Interactions -> Manage Cosmovisor -> **Verify staged or completed handoff**:
+
+- **Verify staged binary before the upgrade** checks the exact plan name, staged `upgrades/<name>/bin/worrelld` executable and version, and confirms that `current` has not been promoted early.
+- **Verify post-upgrade activation and recovery** requires `data/upgrade-info.json`, checks its exact plan name and optional height, requires `current` to resolve to the matching `upgrades/<name>`, checks the active binary version, and rejects an inactive service or restart loop.
+
+The check is read-only and never deletes or rewrites `data/upgrade-info.json`. If `upgrade-info.json` is present but `current` still points to `genesis`, treat that as a failed hand-off: keep the file, inspect `sudo journalctl -u worrelld -n 100 --no-pager`, and recover only after the exact binary and plan have been verified.
 
 ## Recovery
 
 - Check service logs first.
-- Check `cosmovisor version` and the `current` symlink.
-- Verify the upgrade name, binary architecture, and release checksum.
+- Check `cosmovisor version` and run the hand-off verification for the exact release and plan.
+- Verify the upgrade name, binary architecture, release checksum, `current` target, and executable version.
 - Do not delete `data/upgrade-info.json` during recovery; it is the application's upgrade signal.
+- Treat repeated restarts or a stale `current` target as a failed hand-off, not as proof that the upgrade is complete.
 - If a migration needs rollback, stop the service and restore the timestamped service-unit backup after reviewing it.

@@ -18,11 +18,12 @@ grep -q 'SERVICE_EXEC_START="\$BINARY_DIR/worrelld start --home \$HOME_DIR"' "$i
 grep -q 'SERVICE_MODE=direct' "$installer"
 grep -q -- '--service-mode' "$installer"
 grep -q 'DAEMON_ALLOW_DOWNLOAD_BINARIES=false' "$installer"
-grep -q 'WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-true}"' "$installer"
+grep -q 'WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-false}"' "$installer"
+grep -q 'skip_backup="${WORRELL_UNSAFE_SKIP_BACKUP:-false}"' "$installer"
 grep -q 'UNSAFE_SKIP_BACKUP=$WORRELL_UNSAFE_SKIP_BACKUP' "$installer"
-grep -q 'WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-true}"' "$migration"
+grep -q 'WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-false}"' "$migration"
 grep -q 'UNSAFE_SKIP_BACKUP=$WORRELL_UNSAFE_SKIP_BACKUP' "$migration"
-grep -q 'WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-true}"' "$upgrade"
+grep -q 'WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-false}"' "$upgrade"
 grep -q 'UNSAFE_SKIP_BACKUP="$WORRELL_UNSAFE_SKIP_BACKUP"' "$upgrade"
 grep -q 'data/upgrade-info.json' "$repo/docs/cosmovisor.md"
 grep -q 'rejects `--chain-id` on `start`' "$repo/docs/cosmovisor.md"
@@ -33,6 +34,9 @@ grep -q 'VALLEY_COSMOVISOR_MIGRATION_SHA256' "$menu"
 grep -q 'WORRELL_UPGRADE_V0_1_3="v0.1.3"' "$menu"
 grep -q 'WORRELL_UPGRADE_PLAN_V0_1_3="v0.1.3"' "$menu"
 grep -q 'WORRELL_UPGRADE_HEIGHT_V0_1_3="1186000"' "$menu"
+grep -q 'verify_cosmovisor_handoff' "$menu"
+grep -q 'NRestarts' "$menu"
+grep -q 'Keep data/upgrade-info.json intact' "$menu"
 grep -q 'stage_cosmovisor_upgrade' "$menu"
 grep -q 'no local --upgrade-height is passed' "$menu"
 grep -q 'VALLEY_COSMOVISOR_UPGRADE_SHA256' "$menu"
@@ -52,6 +56,7 @@ trap 'rm -f "$stage_fixture"' EXIT
     printf '%s\n' 'WORRELL_UPGRADE_HEIGHT_V0_1_3=1186000'
     printf '%s\n' 'VALLEY_COSMOVISOR_UPGRADE_SHA256=fixture'
     printf '%s\n' 'menu() { :; }' 'prompt_back() { :; }'
+    printf '%s\n' 'verify_cosmovisor_handoff() { :; }'
     printf '%s\n' 'run_pinned_child() { printf "CAPTURE=%s|%s|%s|%s|%s\\n" "$@"; }'
     sed -n '/^stage_cosmovisor_upgrade()/,/^}/p' "$menu"
     printf '%s\n' 'printf "1\\nyes\\n" | stage_cosmovisor_upgrade'

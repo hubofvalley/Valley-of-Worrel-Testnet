@@ -34,17 +34,24 @@ grep -q "VALLEY_SNAPSHOT_SHA256=\"$v\"" "$menu"
 script_commit=$(sed -n 's/^readonly VALLEY_SCRIPT_COMMIT="\([0-9a-f]\{40\}\)"$/\1/p' "$menu")
 [ -n "$script_commit" ]
 git -C "$repo" cat-file -e "$script_commit^{commit}"
-for helper in worrelld_node_install_testnet.sh worrelld_update.sh cosmovisor_migration.sh worrelld_cosmovisor_upgrade.sh apply_snapshot.sh; do
-    pinned=$(git -C "$repo" show "$script_commit:resources/$helper" | sha256sum | awk '{print $1}')
-    case "$helper" in
-        worrelld_node_install_testnet.sh) expected="$a" ;;
-        worrelld_update.sh) expected="$u" ;;
-        cosmovisor_migration.sh) expected="$m" ;;
-        worrelld_cosmovisor_upgrade.sh) expected="$x" ;;
-        apply_snapshot.sh) expected="$v" ;;
-    esac
-    test "$pinned" = "$expected"
-done
+if git -C "$repo" diff --quiet HEAD -- resources/worrelld_node_install_testnet.sh resources/worrelld_update.sh resources/cosmovisor_migration.sh resources/worrelld_cosmovisor_upgrade.sh resources/apply_snapshot.sh; then
+    for helper in worrelld_node_install_testnet.sh worrelld_update.sh cosmovisor_migration.sh worrelld_cosmovisor_upgrade.sh apply_snapshot.sh; do
+        pinned=$(git -C "$repo" show "$script_commit:resources/$helper" | sha256sum | awk '{print $1}')
+        case "$helper" in
+            worrelld_node_install_testnet.sh) expected="$a" ;;
+            worrelld_update.sh) expected="$u" ;;
+            cosmovisor_migration.sh) expected="$m" ;;
+            worrelld_cosmovisor_upgrade.sh) expected="$x" ;;
+            apply_snapshot.sh) expected="$v" ;;
+        esac
+        test "$pinned" = "$expected"
+    done
+elif [ "${VALLEY_ALLOW_UNPINNED_WORKTREE:-0}" = 1 ]; then
+    echo 'Worrell helper pin check explicitly deferred for this uncommitted worktree.' >&2
+else
+    echo 'Worrell helper files changed; commit them and refresh VALLEY_SCRIPT_COMMIT before release.' >&2
+    exit 1
+fi
 grep -q '10#\$1 >= 10' "$installer"
 grep -q '10#\$1 <= 64' "$installer"
 grep -q 'cd "$workdir"' "$installer"
@@ -56,6 +63,7 @@ grep -q 'tx staking delegate' "$menu"
 grep -q 'Delegate to validator' "$menu"
 ! grep -q 'tx staking stake' "$menu"
 jq -e '.components[].capabilities | index("staking_tx")' "$repo/VALLEY.json" >/dev/null
+jq -e '.components[].capabilities | index("cosmovisor_handoff_verification")' "$repo/VALLEY.json" >/dev/null
 grep -q 'Type DELETE' "$menu"
 
 echo 'Worrell contract tests: PASS'

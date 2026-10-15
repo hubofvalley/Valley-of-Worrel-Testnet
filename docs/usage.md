@@ -22,7 +22,7 @@ Run as the node OS user. Do not use `sudo bash` when a normal node user exists; 
 | `1d` | Follows the selected service journal. | Read-only. |
 | `1e` | Sets manual persistent peers or restores the two peers from official network metadata. | Medium: changes config. |
 | `1f` | Queries an operator key balance. | Read-only. |
-| `1g` | Manages Cosmovisor: migrates an existing node, shows status, or stages a verified upgrade binary. The staging menu includes the predefined official `v0.1.3` governance option and a custom verified-release path. | Medium/high: service unit changes or upgrade preparation. |
+| `1g` | Manages Cosmovisor: migrates an existing node, shows status, stages a verified upgrade binary, or verifies a staged/post-upgrade hand-off. The staging menu includes the predefined official `v0.1.3` governance option and a custom verified-release path. | Medium/high: service unit changes or upgrade preparation. |
 | `1h` | Applies a verified pruned snapshot from ITRocket or Sychonix after archive validation and explicit confirmation. Preserves config and validator state. | High: replaces node data after confirmation. |
 
 ### 2. Validator / Key Interactions
@@ -96,6 +96,8 @@ Worrell's application wires the Cosmos SDK `x/upgrade` module, so the node can b
 
 Cosmovisor is optional at install time. Selecting direct mode does not uninstall an existing Cosmovisor binary, and selecting Cosmovisor does not enable automatic downloads. The current live release remains `v0.1.2`. For proposal #3, use **Stage a verified upgrade binary** -> `v0.1.3`; Valley supplies the exact governance plan name `v0.1.3` and stages without a local `--upgrade-height` because the chain plan supplies block `1186000`. A custom release path remains available for separately coordinated upgrades. Staging does not activate the binary or restart the service. The migration does not delete `data/upgrade-info.json` or node data.
 
+Use **Verify staged or completed handoff** after staging and again after the planned height or recovery. The preflight check confirms the staged executable/version and that `current` has not moved early. The post-upgrade check confirms the exact `upgrade-info.json` plan/height, `current -> upgrades/<name>`, executable version, active service, and that `NRestarts` stays stable during a short observation window. It fails closed and never deletes `data/upgrade-info.json`; a stale `current` is an incomplete hand-off, not a successful upgrade. Set `WORRELL_COSMOVISOR_STABILITY_SECONDS` only to adjust that read-only observation window.
+
 Cosmovisor state is stored under `~/.worrell/cosmovisor/`:
 
 ```text
@@ -104,6 +106,8 @@ genesis/bin/worrelld
 upgrades/<upgrade-name>/bin/worrelld
 backup/
 ```
+
+For validator-capable installation and migration, `UNSAFE_SKIP_BACKUP=false` is the default. A lightnode/non-validator operator must explicitly set `WORRELL_UNSAFE_SKIP_BACKUP=true` to opt out; explicit existing values are not silently changed. Emergency height-based staging may create a matching `upgrade-info.json`; the verifier accepts that marker only when the supplied height and plan match exactly.
 
 ## Safety
 

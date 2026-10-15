@@ -26,7 +26,7 @@ BINARY_DIR="${WORRELL_BINARY_DIR:-$([ "$ROOT_MODE" = yes ] && printf '/usr/local
 readonly SERVICE="${WORRELL_SERVICE_NAME:-worrelld}"
 readonly COSMOVISOR_BIN="${COSMOVISOR_BIN:-$BINARY_DIR/cosmovisor}"
 if [ "$ROOT_MODE" = yes ]; then sudo() { "$@"; }; fi
-WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-true}"
+WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-false}"
 case "$WORRELL_UNSAFE_SKIP_BACKUP" in
     true|false) ;;
     *) echo -e "${RED}WORRELL_UNSAFE_SKIP_BACKUP must be true or false.${RESET}" >&2; exit 1 ;;

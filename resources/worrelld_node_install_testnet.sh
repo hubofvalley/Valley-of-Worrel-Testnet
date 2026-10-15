@@ -30,7 +30,7 @@ else
 fi
 readonly COSMOVISOR_VERSION="${WORRELL_COSMOVISOR_VERSION:-v1.7.3}"
 COSMOVISOR_BIN="$BINARY_DIR/cosmovisor"
-WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-true}"
+WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-false}"
 if [ "$ROOT_MODE" = yes ]; then
     sudo() { "$@"; }
 fi
@@ -108,7 +108,7 @@ EOF
 
 save_env() {
     local profile="$HOME/.bash_profile" path_line tmp line skip_backup
-    skip_backup="${WORRELL_UNSAFE_SKIP_BACKUP:-true}"
+    skip_backup="${WORRELL_UNSAFE_SKIP_BACKUP:-false}"
     [ "${ROOT_MODE:-no}" = yes ] && return 0
     touch "$profile"
     sed -i -E '/^export WORRELL_(CHAIN_ID|HOME|SERVICE_NAME|PORT_PREFIX|MONIKER|TARGET_VERSION|UNSAFE_SKIP_BACKUP)=/d' "$profile"
