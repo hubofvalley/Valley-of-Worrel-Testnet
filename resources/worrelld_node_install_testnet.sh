@@ -351,11 +351,8 @@ fi
 
 read -r -p "Enter node moniker [grandvalley-lightnode]: " MONIKER
 MONIKER=${MONIKER:-grandvalley-lightnode}
-while true; do
-    PORT_PREFIX=$(prompt_default 'Enter two-digit port prefix (18 uses P2P/RPC 18656/18657; API/gRPC become 18317/18090)' '18')
-    valid_prefix "$PORT_PREFIX" && break
-    echo -e "${RED}Use exactly two digits, for example 18 or 38.${RESET}"
-done
+PORT_PREFIX=18
+echo -e "${CYAN}Using the fixed Worrell Testnet 2 port prefix: ${PORT_PREFIX}.${RESET}"
 WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-}
 while [ -z "$WORRELL_SERVICE_NAME" ]; do
     read -r -p "Enter service name [worrelld-testnet-2]: " WORRELL_SERVICE_NAME
