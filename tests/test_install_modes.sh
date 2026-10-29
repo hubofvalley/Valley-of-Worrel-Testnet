@@ -57,11 +57,15 @@ cat > "$fence_fixture/sudo" <<'EOF_SUDO'
 set -e
 [ "${1:-}" = systemctl ] || exit 1
 case "${2:-}" in
-    cat|disable) exit 0 ;;
+    disable) exit 0 ;;
     stop) [ "${FENCE_MODE:-}" != stop-fail ] ;;
     is-active)
-        if [ "${FENCE_MODE:-}" = active ]; then printf '%s\n' active; else printf '%s\n' inactive; fi
+        if [ "${FENCE_MODE:-}" = active ] || [ "${FENCE_MODE:-}" = stop-fail ]; then printf '%s\n' active; elif [ "${FENCE_MODE:-}" = state-error ]; then exit 1; else printf '%s\n' inactive; fi
         exit 3
+        ;;
+    is-enabled)
+        printf '%s\n' not-found
+        exit 1
         ;;
     *) exit 1 ;;
 esac
@@ -81,6 +85,10 @@ if FENCE_SUDO="$fence_fixture/sudo" PATH="$fence_fixture:$PATH" FENCE_MODE=activ
     echo 'active service after stop was accepted' >&2
     exit 1
 fi
+if FENCE_SUDO="$fence_fixture/sudo" PATH="$fence_fixture:$PATH" FENCE_MODE=state-error "$fence_fixture/run-fence.sh" >/dev/null 2>&1; then
+    echo 'ambiguous service state was accepted' >&2
+    exit 1
+fi
 FENCE_SUDO="$fence_fixture/sudo" PATH="$fence_fixture:$PATH" FENCE_MODE=inactive "$fence_fixture/run-fence.sh" >/dev/null
 rm -rf "$fence_fixture"
 grep -q 'install -m 0644 /dev/null "$env_file"' "$installer"
@@ -89,6 +97,36 @@ grep -q 'chown root:root "$env_file"' "$installer"
 for helper in "$repo/resources/worrelld_update.sh" "$repo/resources/cosmovisor_migration.sh" "$repo/resources/worrelld_cosmovisor_upgrade.sh" "$repo/resources/valleyofWorrel.sh"; do
     grep -q 'WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env' "$helper"
 done
+env_fixture=$(mktemp -d)
+awk '/^validate_t2_environment\(\) \{/,/^}/ {print}' "$menu" > "$env_fixture/function.sh"
+cat > "$env_fixture/run-env.sh" <<'EOF_ENV'
+#!/usr/bin/env bash
+set -euo pipefail
+source "$ENV_FUNCTION"
+RED= RESET=
+WORRELL_CHAIN_ID=worrell-testnet-2
+WORRELL_HOME="$HOME/.worrell-testnet-2"
+WORRELL_ENV_FILE="$HOME/.worrell-testnet-2/.worrell-testnet-2.env"
+WORRELL_SERVICE_NAME=worrelld-testnet-2
+WORRELL_SERVICE_USER="$(id -un)"
+WORRELL_PORT_PREFIX=18
+WORRELL_TARGET_VERSION=v0.2.0
+validate_t2_environment
+WORRELL_CHAIN_ID=worrell-testnet-1
+WORRELL_HOME="$HOME/.worrell"
+WORRELL_ENV_FILE="$HOME/.worrell/.worrell-testnet-2.env"
+WORRELL_SERVICE_NAME=worrelld
+WORRELL_PORT_PREFIX=17
+WORRELL_TARGET_VERSION=v0.1.2
+if validate_t2_environment; then
+    echo 'legacy profile environment was accepted' >&2
+    exit 1
+fi
+EOF_ENV
+chmod +x "$env_fixture/run-env.sh"
+HOME="$env_fixture" ENV_FUNCTION="$env_fixture/function.sh" "$env_fixture/run-env.sh" >/dev/null 2>&1
+rm -rf "$env_fixture"
+
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
 for args in '--service-mode invalid' '--service-mode' '--unknown'; do

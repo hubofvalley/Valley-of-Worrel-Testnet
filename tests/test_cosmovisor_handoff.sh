@@ -5,7 +5,7 @@ repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 menu="$repo/resources/valleyofWorrel.sh"
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
-home="$fixture/home"
+home="$fixture/.worrell-testnet-2"
 fake="$fixture/bin"
 mkdir -p "$home/cosmovisor/genesis/bin" "$home/cosmovisor/upgrades/v0.2.1/bin" "$home/data" "$fake"
 
@@ -53,7 +53,7 @@ chmod +x "$fake/systemctl"
 awk '/^echo -e "\$LOGO"/{exit} {print}' "$menu" > "$fixture/functions.sh"
 run_verify() {
     local phase="$1" version="$2" name="$3" height="$4"
-    HOME="$fixture" WORRELL_HOME="$home" WORRELL_SERVICE_NAME=worrelld \
+    HOME="$fixture" WORRELL_HOME="$home" WORRELL_SERVICE_NAME=worrelld-testnet-2 \
         WORRELL_COSMOVISOR_STABILITY_SECONDS=0 FAKE_SERVICE_STATE="$fake/service-state" \
         FAKE_RESTARTS="$fake/restarts" FAKE_SHOW_CALLS="$fake/show-calls" PATH="$fake:$PATH" bash -c '
             sudo() { "$@"; }

@@ -8,7 +8,7 @@ export PATH="$HOME/go/bin:/usr/local/bin:$PATH"
 
 if [ -z "${WORRELL_HOME:-}" ]; then
     if [ "${EUID:-$(id -u)}" -eq 0 ]; then
-        WORRELL_HOME="/var/lib/${WORRELL_SERVICE_USER:-worrell-testnet-2}"
+        WORRELL_HOME=/var/lib/worrell-testnet-2
     else
         WORRELL_HOME="$HOME/.worrell-testnet-2"
     fi
@@ -37,13 +37,46 @@ WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-}
 WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-}
 WORRELL_PEERS=${WORRELL_PEERS:-}
 WORRELL_PUBLIC_PEER=${WORRELL_PUBLIC_PEER:-}
-readonly VALLEY_INSTALLER_SHA256="644de074ec26a2ecd1f17cd1ad0e4b80d97bdb0e36b7d9cb907169dd7ced3673"
+
+validate_t2_environment() {
+    local expected_home expected_env expected_bin expected_user
+    if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+        expected_home=/var/lib/worrell-testnet-2
+        expected_env=/etc/worrelld-testnet-2/worrelld.env
+        expected_bin=/usr/local/bin
+        expected_user=worrell-testnet-2
+    else
+        expected_home="$HOME/.worrell-testnet-2"
+        expected_env="$expected_home/.worrell-testnet-2.env"
+        expected_bin="$HOME/go/bin"
+        expected_user="$(id -un)"
+    fi
+    [ "$WORRELL_CHAIN_ID" = worrell-testnet-2 ] || { echo -e "${RED}Refusing a non-Testnet-2 chain environment.${RESET}" >&2; return 1; }
+    [ "$WORRELL_HOME" = "$expected_home" ] || { echo -e "${RED}Refusing legacy or non-T2 WORRELL_HOME: $WORRELL_HOME${RESET}" >&2; return 1; }
+    [ "$WORRELL_ENV_FILE" = "$expected_env" ] || { echo -e "${RED}Refusing legacy WORRELL_ENV_FILE: $WORRELL_ENV_FILE${RESET}" >&2; return 1; }
+    [ "$WORRELL_SERVICE_NAME" = worrelld-testnet-2 ] || { echo -e "${RED}Refusing legacy service name: $WORRELL_SERVICE_NAME${RESET}" >&2; return 1; }
+    [ "$WORRELL_SERVICE_USER" = "$expected_user" ] || { echo -e "${RED}Refusing legacy service user: $WORRELL_SERVICE_USER${RESET}" >&2; return 1; }
+    [ "$WORRELL_PORT_PREFIX" = 18 ] || { echo -e "${RED}Refusing legacy port prefix: $WORRELL_PORT_PREFIX${RESET}" >&2; return 1; }
+    [ "$WORRELL_TARGET_VERSION" = v0.2.0 ] || { echo -e "${RED}Refusing legacy runtime target: $WORRELL_TARGET_VERSION${RESET}" >&2; return 1; }
+    if [ -n "${WORRELL_BINARY_DIR:-}" ] && [ "$WORRELL_BINARY_DIR" != "$expected_bin" ]; then
+        echo -e "${RED}Refusing legacy WORRELL_BINARY_DIR: $WORRELL_BINARY_DIR${RESET}" >&2
+        return 1
+    fi
+    if [ -n "${WORRELL_SERVICE_GROUP:-}" ] && [ "$WORRELL_SERVICE_GROUP" != "$expected_user" ]; then
+        echo -e "${RED}Refusing legacy WORRELL_SERVICE_GROUP: $WORRELL_SERVICE_GROUP${RESET}" >&2
+        return 1
+    fi
+}
+
+validate_t2_environment || exit 1
+
+readonly VALLEY_INSTALLER_SHA256="caa57942e3ed55a9ef49fd1883e85a4fbccbff587acd813907bfc7b76f1329d9"
 readonly VALLEY_UPDATER_SHA256="be34176f8b6a9d27e939ba7db7e8bcbf44d2fe577efc36eb8fbb1f25aaf52107"
 readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="0abdc7647c9df49e96ec8b16f74968e1ae5501ab94f4e8d941d05fd70ee82d5d"
 readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="784e2d727a6c95c0e404f4f531cd8e955eebbd7e3838f5ebe9a7dee303397697"
-readonly VALLEY_GENESIS_CEREMONY_SHA256="da95bebf34adeaadd404c2e3c26e3ba95ce2b57bf112b130b57fe9c1d5b681a9"
-readonly VALLEY_SCRIPT_COMMIT="0cbc56b91db6c78194d174ae5887883f0b157c9c"
-readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/0cbc56b91db6c78194d174ae5887883f0b157c9c/resources"
+readonly VALLEY_GENESIS_CEREMONY_SHA256="c905c24778752353e86d69ffca0a7e7f9f7707532cee246b240889af4e8ce874"
+readonly VALLEY_SCRIPT_COMMIT="2a7d15548f1945c6d48987788ce8607f9f59a5e8"
+readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/2a7d15548f1945c6d48987788ce8607f9f59a5e8/resources"
 
 export WORRELL_HOME WORRELL_ENV_FILE WORRELL_CHAIN_ID WORRELL_SERVICE_NAME
 export WORRELL_SERVICE_USER WORRELL_PORT_PREFIX WORRELL_TARGET_VERSION WORRELL_UNSAFE_SKIP_BACKUP
@@ -250,6 +283,7 @@ install_node() {
         # shellcheck disable=SC1090
         source "$WORRELL_ENV_FILE"
         export WORRELL_HOME WORRELL_ENV_FILE WORRELL_SERVICE_NAME WORRELL_SERVICE_USER WORRELL_PORT_PREFIX
+        validate_t2_environment || return 1
     fi
     echo -e "${GREEN}Installation flow finished. Review the output above before returning to the main menu.${RESET}"
     prompt_back

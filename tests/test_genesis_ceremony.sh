@@ -59,7 +59,7 @@ cat > "$fixture/bin/worrelld" <<'EOF_BIN'
 printf '%s\n' "$*" >> "$GENTX_CALLS"
 EOF_BIN
 chmod +x "$fixture/bin/worrelld"
-HOME="$fixture" WORRELL_HOME="$fixture/.worrell-testnet-2" WORRELLD_BIN="$fixture/bin/worrelld" GENTX_CALLS="$fixture/calls" GENTX_KEY=operator GENTX_MONIKER=Testnet2 GENTX_IP=203.0.113.10 bash -c 'set -e; source "$HOME/functions.sh"; printf "no\n" | create_gentx'
+PATH="$fixture/bin:$PATH" HOME="$fixture" WORRELL_HOME="$fixture/.worrell-testnet-2" WORRELLD_BIN=worrelld GENTX_CALLS="$fixture/calls" GENTX_KEY=operator GENTX_MONIKER=Testnet2 GENTX_IP=203.0.113.10 bash -c 'set -e; source "$HOME/functions.sh"; printf "no\n" | create_gentx'
 [ ! -e "$fixture/calls" ]
 
 echo 'Worrell genesis ceremony tests: PASS'

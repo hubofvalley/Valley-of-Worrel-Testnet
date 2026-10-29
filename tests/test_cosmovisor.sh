@@ -81,7 +81,7 @@ cat > "$fixture/effective" <<'EOF'
 /home/test/go/bin/cosmovisor run start
 EOF
 awk '/^echo -e "\$LOGO"/{exit} {print}' "$menu" > "$fixture/functions.sh"
-HOME="$fixture" WORRELL_HOME="$fixture/.worrell-testnet-2" WORRELL_SERVICE_NAME=worrelld bash -c '
+HOME="$fixture" WORRELL_HOME="$fixture/.worrell-testnet-2" WORRELL_SERVICE_NAME=worrelld-testnet-2 bash -c '
   sudo() { if [ "$1" = systemctl ] && [ "$2" = show ]; then cat "$HOME/effective"; else return 1; fi; }
   source "$HOME/functions.sh"
   test "$(runtime_mode)" = cosmovisor
@@ -146,7 +146,7 @@ exit 1
 EOS
 chmod +x "$rollback_bin"/*
 set +e
-HOME="$rollback_fixture/home" PATH="$rollback_bin:$PATH" WORRELL_HOME="$rollback_fixture/home/.worrell-testnet-2" WORRELL_SERVICE_NAME=worrelld WORRELL_SYSTEMD_UNIT_DIR="$rollback_fixture/systemd" FAKE_SYSTEMD_STATE="$rollback_fixture/state" bash "$migration" >/tmp/worrel-migration-failure.out 2>&1
+HOME="$rollback_fixture/home" PATH="$rollback_bin:$PATH" WORRELL_HOME="$rollback_fixture/home/.worrell-testnet-2" WORRELL_SERVICE_NAME=worrelld-testnet-2 WORRELL_SYSTEMD_UNIT_DIR="$rollback_fixture/systemd" FAKE_SYSTEMD_STATE="$rollback_fixture/state" bash "$migration" >/tmp/worrel-migration-failure.out 2>&1
 migration_rc=$?
 set -e
 test "$migration_rc" -ne 0
