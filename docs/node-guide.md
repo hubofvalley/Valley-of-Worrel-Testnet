@@ -115,7 +115,7 @@ The Valley installer keeps `worrelld-testnet-2.service` stopped after pre-genesi
 | gRPC-Web | 18091 | Localhost unless protected |
 | Prometheus | 18660 | Localhost/monitoring network |
 
-Use Valley's prefix prompt if these ports are occupied. Keep Testnet 1 on its existing ports and service. Never run both networks with the same consensus key.
+Testnet 2 uses the fixed Valley port prefix `18`; if these ports are occupied, stop and resolve the host allocation rather than selecting a different prefix. Keep Testnet 1 on its existing ports and service. Never run both networks with the same consensus key.
 
 ## Validator and service safety
 

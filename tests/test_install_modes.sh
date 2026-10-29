@@ -46,6 +46,8 @@ grep -q 'WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env' "$installer"
 grep -q 'fence_existing_service()' "$installer"
 grep -q 'systemctl is-active' "$installer"
 grep -q 'systemctl is-enabled' "$installer"
+grep -q 'PORT_PREFIX=18' "$installer"
+! grep -q 'Enter two-digit port prefix' "$installer"
 ! grep -q 'systemctl enable' "$installer"
 ! grep -q 'systemctl stop.*|| true' "$installer"
 
