@@ -358,10 +358,22 @@ else
 fi
 prepare_service_account
 
+fence_existing_service() {
+    local state
+    if sudo systemctl cat "$WORRELL_SERVICE_NAME" >/dev/null 2>&1; then
+        sudo systemctl stop "$WORRELL_SERVICE_NAME"
+        sudo systemctl disable "$WORRELL_SERVICE_NAME"
+        state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+        case "$state" in
+            inactive|dead|failed|unknown) ;;
+            *) echo -e "${RED}Service $WORRELL_SERVICE_NAME is still active after stop; refusing to replace the node home.${RESET}" >&2; return 1 ;;
+        esac
+    fi
+}
+
 sudo apt-get update
 sudo apt-get install -y curl git jq build-essential wget lz4 unzip openssl ca-certificates
-sudo systemctl stop "$WORRELL_SERVICE_NAME" 2>/dev/null || true
-sudo systemctl disable "$WORRELL_SERVICE_NAME" 2>/dev/null || true
+fence_existing_service
 sudo rm -f "/etc/systemd/system/${WORRELL_SERVICE_NAME}.service"
 
 if [ -d "$HOME_DIR" ]; then
@@ -437,9 +449,16 @@ fi
 write_runtime_env
 save_env
 sudo systemctl daemon-reload
-sudo systemctl enable "$WORRELL_SERVICE_NAME"
+sudo systemctl disable "$WORRELL_SERVICE_NAME"
+enabled_state=$(sudo systemctl is-enabled "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+[ "$enabled_state" = disabled ] || { echo -e "${RED}Service $WORRELL_SERVICE_NAME is not disabled after installation; refusing handoff.${RESET}" >&2; exit 1; }
+active_state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+case "$active_state" in
+    inactive|dead|failed|unknown) ;;
+    *) echo -e "${RED}Service $WORRELL_SERVICE_NAME is active after installation; refusing handoff.${RESET}" >&2; exit 1 ;;
+esac
 echo -e "${GREEN}Worrell testnet-2 node installed with verified pre-genesis.${RESET}"
-echo -e "${YELLOW}The service remains stopped until final genesis and its published checksum/peers are applied through the genesis ceremony.${RESET}"
+echo -e "${YELLOW}The service remains disabled and stopped until final genesis and its published checksum/peers are applied through the genesis ceremony.${RESET}"
 echo -e "${CYAN}Service user:${RESET} $SERVICE_USER"
 echo -e "${CYAN}Home:${RESET} $HOME_DIR"
 echo -e "${CYAN}Pruning:${RESET} $PRUNING_MODE"

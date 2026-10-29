@@ -8,6 +8,7 @@ readonly PRE_GENESIS_URL="${WORRELL_PRE_GENESIS_URL:-https://raw.githubuserconte
 readonly PRE_GENESIS_SHA256="f5231dc924c762bdbe5aa0605ed6472288c9b71f4b175015e0559edccdd96b94"
 readonly FINAL_GENESIS_URL="${WORRELL_FINAL_GENESIS_URL:-https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-2/genesis.json}"
 readonly DEFAULT_PORT_PREFIX="${WORRELL_PORT_PREFIX:-18}"
+readonly WORRELL_SERVICE_NAME="${WORRELL_SERVICE_NAME:-worrelld-testnet-2.service}"
 
 ROOT_MODE=no
 if [ "${EUID:-$(id -u)}" -eq 0 ]; then ROOT_MODE=yes; fi
@@ -82,6 +83,7 @@ validate_with_binary() {
 fetch_pre_genesis() {
     valid_home
     require_tools
+    require_service_inactive
     local tmp previous
     info "Fetching the official worrell-testnet-2 pre-genesis."
     tmp="$(fetch_verified "$PRE_GENESIS_URL" "$PRE_GENESIS_SHA256")"
@@ -91,6 +93,7 @@ fetch_pre_genesis() {
         previous="$(backup_genesis "$local_genesis")"
         [ -z "$previous" ] || info "Previous genesis backed up to $previous"
     fi
+    require_service_inactive
     install -m 0644 "$tmp" "$local_genesis"
     rm -f "$tmp"
     printf '%s\n' "Pre-genesis installed at $local_genesis"
@@ -132,11 +135,25 @@ PY
 valid_checksum() { [[ "${1:-}" =~ ^[0-9a-fA-F]{64}$ ]]; }
 valid_peers() { [ -n "${1:-}" ] && [[ "$1" != *$'\n'* && "$1" != *$'\r'* ]]; }
 
+service_is_inactive() {
+    local state
+    state="$(systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)"
+    case "$state" in
+        inactive|dead|failed|unknown) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+require_service_inactive() {
+    service_is_inactive || die "Service $WORRELL_SERVICE_NAME must be inactive before changing genesis."
+}
+
 apply_final_genesis() {
     local checksum="${1:-}" peers="${2:-}" url="${3:-$FINAL_GENESIS_URL}"
     local tmp genesis_backup config_backup had_genesis=no
     valid_home
     require_tools
+    require_service_inactive
     valid_checksum "$checksum" || die 'Final genesis checksum must be exactly 64 hexadecimal characters.'
     valid_peers "$peers" || die 'Final genesis peers are required and must be a single non-empty value.'
     [ -f "$config_file" ] || die "Config not found: $config_file. Initialize the node before applying final genesis."
@@ -156,6 +173,7 @@ apply_final_genesis() {
         warn 'Final genesis application cancelled; no file changed.'
         return 0
     fi
+    require_service_inactive
     if ! set_persistent_peers "$peers" || ! install -m 0644 "$tmp" "$local_genesis"; then
         cp -p "$config_backup" "$config_file"
         [ "$had_genesis" = yes ] && cp -p "$genesis_backup" "$local_genesis"
