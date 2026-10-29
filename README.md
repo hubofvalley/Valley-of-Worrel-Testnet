@@ -12,6 +12,16 @@ This Valley package turns the official node and ceremony procedure into an audit
 
 Testnet 1 remains a separate network and is expected to run until **24 November 2026**. Do not reuse its `~/.worrell` home, service, signing key, genesis, or ports for Testnet 2.
 
+## Testnet 1 compatibility ref
+
+The separate Testnet 1 lane remains available on the public `testnet-1` ref until 24 November 2026:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/testnet-1/resources/valleyofWorrel.sh)
+```
+
+That ref targets `worrell-testnet-1`, v0.1.2, `~/.worrell`, and `worrelld.service`. This `main` branch remains the Testnet 2 lane.
+
 ## Network
 
 | Field | Value |
