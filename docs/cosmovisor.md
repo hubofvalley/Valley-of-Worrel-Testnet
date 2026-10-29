@@ -4,7 +4,7 @@ Worrell's application includes the Cosmos SDK `x/upgrade` module and prioritises
 
 ## New installation
 
-Pruning selection is independent of runtime selection. Snapshot application is also independent of runtime selection and does not change the Cosmovisor/direct service mode. Cosmovisor is optional during `1a` installation. The prompt is:
+Pruning selection is independent of runtime selection. Snapshot import is intentionally disabled until a chain-bound Testnet 2 provider and checksum are published and verified. Cosmovisor is optional during `1a` installation. The prompt is:
 
 ```text
 Install Cosmovisor for this deployment? (yes/no) [no]:

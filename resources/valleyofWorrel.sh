@@ -37,14 +37,13 @@ WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-}
 WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-}
 WORRELL_PEERS=${WORRELL_PEERS:-}
 WORRELL_PUBLIC_PEER=${WORRELL_PUBLIC_PEER:-}
-readonly VALLEY_INSTALLER_SHA256="1059835801dacb4383a8d54a593a0afde7f0366d6c4d18f00dbb077e46cdfcc1"
+readonly VALLEY_INSTALLER_SHA256="644de074ec26a2ecd1f17cd1ad0e4b80d97bdb0e36b7d9cb907169dd7ced3673"
 readonly VALLEY_UPDATER_SHA256="be34176f8b6a9d27e939ba7db7e8bcbf44d2fe577efc36eb8fbb1f25aaf52107"
 readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="0abdc7647c9df49e96ec8b16f74968e1ae5501ab94f4e8d941d05fd70ee82d5d"
 readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="784e2d727a6c95c0e404f4f531cd8e955eebbd7e3838f5ebe9a7dee303397697"
-readonly VALLEY_SNAPSHOT_SHA256="4bb4b5c3af91119c801f5f053470ff3535e9abde4dd81e72d1ae1e5e611793f3"
-readonly VALLEY_GENESIS_CEREMONY_SHA256="f7c067cf346c07e403b6371cd6f7e92735d130d1637d8f5065e2c9d538ee82ef"
-readonly VALLEY_SCRIPT_COMMIT="65102607ab9e10c124dc8aa6a8c83021f76632cf"
-readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/65102607ab9e10c124dc8aa6a8c83021f76632cf/resources"
+readonly VALLEY_GENESIS_CEREMONY_SHA256="da95bebf34adeaadd404c2e3c26e3ba95ce2b57bf112b130b57fe9c1d5b681a9"
+readonly VALLEY_SCRIPT_COMMIT="0cbc56b91db6c78194d174ae5887883f0b157c9c"
+readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/0cbc56b91db6c78194d174ae5887883f0b157c9c/resources"
 
 export WORRELL_HOME WORRELL_ENV_FILE WORRELL_CHAIN_ID WORRELL_SERVICE_NAME
 export WORRELL_SERVICE_USER WORRELL_PORT_PREFIX WORRELL_TARGET_VERSION WORRELL_UNSAFE_SKIP_BACKUP
@@ -130,7 +129,6 @@ run_pinned_child() {
         worrelld_update.sh) expected="$VALLEY_UPDATER_SHA256" ;;
         cosmovisor_migration.sh) expected="$VALLEY_COSMOVISOR_MIGRATION_SHA256" ;;
         worrelld_cosmovisor_upgrade.sh) expected="$VALLEY_COSMOVISOR_UPGRADE_SHA256" ;;
-        apply_snapshot.sh) expected="$VALLEY_SNAPSHOT_SHA256" ;;
         worrell_genesis_ceremony.sh) expected="$VALLEY_GENESIS_CEREMONY_SHA256" ;;
         *) echo -e "${RED}Unknown child script. Refusing execution.${RESET}" >&2; return 1 ;;
     esac
@@ -558,14 +556,6 @@ manage_cosmovisor() {
             menu
             ;;
     esac
-}
-
-apply_snapshot() {
-    if ! run_pinned_child apply_snapshot.sh "$VALLEY_SNAPSHOT_SHA256"; then
-        echo -e "${RED}Snapshot operation failed. Review the output above before retrying.${RESET}" >&2
-    fi
-    prompt_back
-    menu
 }
 
 genesis_ceremony() {
@@ -1370,7 +1360,7 @@ show_guidelines() {
     echo -e "${GREEN}Guidelines${RESET}"
     echo "- 1a installs/redeploys; choose pruned/archive storage and direct worrelld/Cosmovisor runtime. Existing data is moved to a timestamped backup."
     echo "- 1b updates the binary with release checksum verification; Cosmovisor nodes use 1g."
-    echo "- 1h applies a verified pruned snapshot from ITRocket or Sychonix; it preserves validator state and config."
+    echo "- Snapshot application is disabled until a chain-bound Testnet 2 provider and checksum are published and verified."
     echo "- 1i fetches verified pre-genesis, previews/confirms a gentx, or applies final genesis with its published checksum and peers."
     echo "- 1g manages Cosmovisor: migration, status, and verified upgrade staging."
     echo "- 1c compares local/public heights; wait for catching_up=false before staking."
@@ -1402,7 +1392,6 @@ menu() {
     echo "   e. Configure persistent peers"
     echo "   f. Query account balance"
     echo "   g. Manage Cosmovisor"
-    echo "   h. Apply Snapshot"
     echo "   i. Genesis ceremony"
     echo -e "${GREEN}2. Validator/Key Interactions${RESET}"
     echo "   a. Create / recover / list keys"
@@ -1434,7 +1423,6 @@ menu() {
                 e) set_peers ;;
                 f) query_balance ;;
                 g) manage_cosmovisor ;;
-                h) apply_snapshot ;;
                 i) genesis_ceremony ;;
                 *) menu ;;
             esac

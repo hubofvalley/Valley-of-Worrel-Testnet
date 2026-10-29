@@ -28,15 +28,15 @@ The prefix is local operator configuration, not a protocol parameter. The instal
 
 | Option | Behaviour | Risk |
 |---|---|---|
-| `1a` | Installs or redeploys Testnet 2 with verified pre-genesis, v0.2.0, selected pruning, and direct/Cosmovisor runtime. The service is enabled but remains stopped until final genesis is applied. | High: replaces the node home after confirmation. |
+| `1a` | Installs or redeploys Testnet 2 with verified pre-genesis, v0.2.0, selected pruning, and direct/Cosmovisor runtime. The service remains disabled and stopped until final genesis is applied. | High: replaces the node home after confirmation. |
 | `1b` | Updates a direct `worrelld` binary after upstream checksum and v0.2.0 asset verification. | Medium: service restart/downtime. |
 | `1c` | Shows local height, unknown/unavailable public height, chain ID, and catching-up status. | Read-only. |
 | `1d` | Follows the configured service journal. | Read-only. |
 | `1e` | Sets persistent peers manually. Coordinator peers remain UNKNOWN until final genesis is published. | Medium: changes config. |
 | `1f` | Queries an operator key balance through the local RPC. | Read-only. |
 | `1g` | Migrates to Cosmovisor, shows status, stages a verified future release, or verifies a staged hand-off. No Testnet 2 upgrade plan is assumed. | Medium/high. |
-| `1h` | Runs the guarded snapshot helper. Snapshot providers for Testnet 2 are UNKNOWN until verified; do not copy Testnet 1 state. | High: replaces data after confirmation. |
 | `1i` | Opens the genesis ceremony: verifies pre-genesis, previews/confirms gentx, or applies final genesis with a required checksum and peers. | High: changes genesis/config; gentx is signed. |
+
 | `2a` | Lists, creates, or recovers keys. Mnemonics remain local and are shown only by the binary. | Sensitive local key operation. |
 | `2b` | Shows the consensus public key. | Read-only. |
 | `2c` | Previews and submits `create-validator` only after explicit confirmation and local sync checks. | On-chain transaction. |
@@ -50,6 +50,8 @@ The prefix is local operator configuration, not a protocol parameter. The instal
 | `4` | Shows official source links, pre-genesis checksum, local ports, and explicit UNKNOWN final metadata. | Read-only. |
 | `5` | Shows safety and Testnet 1 separation guidance. | Read-only. |
 | `6` | Exits. | None. |
+
+Snapshot import is intentionally unavailable until a chain-bound Testnet 2 provider and checksum are published and verified.
 
 ## Genesis ceremony flow
 

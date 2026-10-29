@@ -45,7 +45,7 @@ The Valley menu option `1i` / **Genesis ceremony** can:
 2. preview the exact gentx command and run it only after typing `CREATE-GENTX`;
 3. apply final `genesis.json` only when the coordinator-supplied checksum and persistent peers are entered, then validate the local genesis.
 
-The installer leaves the service stopped after installing pre-genesis. Do not start a node as the final network until the published final genesis, checksum, peers, and `genesis_time` are available.
+The installer leaves the service disabled and stopped after installing pre-genesis. Do not start or enable a node as the final network until the published final genesis, checksum, peers, and `genesis_time` are available.
 
 ## Requirements
 
@@ -77,7 +77,7 @@ Use the Testnet 2 home and service defaults. On a root-only host the installer u
 - Optional direct `worrelld` or Cosmovisor service, with automatic binary downloads disabled.
 - Read-only status/log helpers and guarded validator/key operations.
 
-Final public RPCs, peers, faucet, explorers, and snapshot sources are **UNKNOWN** until official Testnet 2 metadata is published. The menu displays that status instead of copying Testnet 1 endpoints.
+Final public RPCs, peers, faucet, explorers, and snapshot sources are **UNKNOWN** until official Testnet 2 metadata is published. Snapshot import is intentionally disabled until a chain-bound provider and checksum are verified; the menu never copies Testnet 1 endpoints.
 
 ## Documentation
 

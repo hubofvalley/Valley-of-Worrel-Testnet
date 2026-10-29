@@ -28,7 +28,6 @@
         "keys",
         "validator_tx",
         "staking_tx",
-        "snapshot",
         "pruning",
         "genesis_ceremony",
         "cosmovisor",

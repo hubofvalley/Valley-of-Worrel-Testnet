@@ -37,6 +37,21 @@ HOME="$fixture" WORRELL_HOME="$fixture/.worrell-testnet-2" bash -c 'set -e; sour
 grep -Fq 'persistent_peers = "abc@node.example:18656"' "$fixture/.worrell-testnet-2/config/config.toml"
 grep -Fq 'laddr = "tcp://127.0.0.1:18657"' "$fixture/.worrell-testnet-2/config/config.toml"
 
+# Genesis replacement must fail closed while the managed service is active.
+cat > "$fixture/bin/systemctl" <<'EOF_SYSTEMCTL'
+#!/usr/bin/env bash
+if [ "${1:-}" = is-active ]; then
+    printf '%s\n' active
+    exit 0
+fi
+exit 1
+EOF_SYSTEMCTL
+chmod +x "$fixture/bin/systemctl"
+if PATH="$fixture/bin:$PATH" HOME="$fixture" WORRELL_HOME="$fixture/.worrell-testnet-2" bash -c 'set -e; source "$HOME/functions.sh"; require_service_inactive'; then
+    echo 'active service was accepted for genesis mutation' >&2
+    exit 1
+fi
+
 # Gentx is preview-only until the exact confirmation phrase is entered.
 printf '%s\n' '{"chain_id":"worrell-testnet-2"}' > "$fixture/.worrell-testnet-2/config/genesis.json"
 cat > "$fixture/bin/worrelld" <<'EOF_BIN'

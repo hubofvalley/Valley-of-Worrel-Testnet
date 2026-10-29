@@ -123,7 +123,7 @@ Use Valley's prefix prompt if these ports are occupied. Keep Testnet 1 on its ex
 - Keep RPC, REST, gRPC, gRPC-Web, and Prometheus private unless protected.
 - Review `create-validator`, delegation, and `unjail` previews before explicit confirmation.
 - Keep signer backups mode 600 and never restore an old signer state after the node signs again.
-- No Testnet 2 faucet, public RPC, explorer, snapshot, or final peer list is asserted here until official metadata supplies it.
+- No Testnet 2 faucet, public RPC, explorer, snapshot provider, or final peer list is asserted here until official metadata supplies it; snapshot import remains disabled until then.
 
 ## Official sources
 

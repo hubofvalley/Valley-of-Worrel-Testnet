@@ -42,25 +42,53 @@ grep -q 'sudo() { "\$@"; }' "$installer"
 grep -q 'ROOT_MODE=yes' "$repo/resources/worrelld_update.sh"
 grep -q 'ROOT_MODE=yes' "$repo/resources/cosmovisor_migration.sh"
 grep -q 'ROOT_MODE=yes' "$repo/resources/worrelld_cosmovisor_upgrade.sh"
-grep -q 'fix_node_ownership()' "$repo/resources/apply_snapshot.sh"
 grep -q 'WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env' "$installer"
+grep -q 'fence_existing_service()' "$installer"
+grep -q 'systemctl is-active' "$installer"
+grep -q 'systemctl is-enabled' "$installer"
+! grep -q 'systemctl enable' "$installer"
+! grep -q 'systemctl stop.*|| true' "$installer"
+
+fence_fixture=$(mktemp -d)
+trap 'rm -rf "$fence_fixture"' EXIT
+awk '/^fence_existing_service\(\) \{/,/^}/ {print}' "$installer" > "$fence_fixture/function.sh"
+cat > "$fence_fixture/sudo" <<'EOF_SUDO'
+#!/usr/bin/env bash
+set -e
+[ "${1:-}" = systemctl ] || exit 1
+case "${2:-}" in
+    cat|disable) exit 0 ;;
+    stop) [ "${FENCE_MODE:-}" != stop-fail ] ;;
+    is-active)
+        if [ "${FENCE_MODE:-}" = active ]; then printf '%s\n' active; else printf '%s\n' inactive; fi
+        exit 3
+        ;;
+    *) exit 1 ;;
+esac
+EOF_SUDO
+chmod +x "$fence_fixture/sudo"
+{
+    printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' 'WORRELL_SERVICE_NAME=worrelld-testnet-2' 'sudo() { "$FENCE_SUDO" "$@"; }'
+    cat "$fence_fixture/function.sh"
+    printf '%s\n' 'fence_existing_service'
+} > "$fence_fixture/run-fence.sh"
+chmod +x "$fence_fixture/run-fence.sh"
+if FENCE_SUDO="$fence_fixture/sudo" PATH="$fence_fixture:$PATH" FENCE_MODE=stop-fail "$fence_fixture/run-fence.sh" >/dev/null 2>&1; then
+    echo 'failed stop was not fail-closed' >&2
+    exit 1
+fi
+if FENCE_SUDO="$fence_fixture/sudo" PATH="$fence_fixture:$PATH" FENCE_MODE=active "$fence_fixture/run-fence.sh" >/dev/null 2>&1; then
+    echo 'active service after stop was accepted' >&2
+    exit 1
+fi
+FENCE_SUDO="$fence_fixture/sudo" PATH="$fence_fixture:$PATH" FENCE_MODE=inactive "$fence_fixture/run-fence.sh" >/dev/null
+rm -rf "$fence_fixture"
 grep -q 'install -m 0644 /dev/null "$env_file"' "$installer"
 grep -q 'chown root:root "$env_file"' "$installer"
 ! grep -q 'chown "$SERVICE_USER:$SERVICE_GROUP" "$env_file"' "$installer"
-for helper in "$repo/resources/worrelld_update.sh" "$repo/resources/cosmovisor_migration.sh" "$repo/resources/worrelld_cosmovisor_upgrade.sh" "$repo/resources/apply_snapshot.sh" "$repo/resources/valleyofWorrel.sh"; do
+for helper in "$repo/resources/worrelld_update.sh" "$repo/resources/cosmovisor_migration.sh" "$repo/resources/worrelld_cosmovisor_upgrade.sh" "$repo/resources/valleyofWorrel.sh"; do
     grep -q 'WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env' "$helper"
 done
-python3 - "$repo/resources/apply_snapshot.sh" <<'PYROOT'
-from pathlib import Path
-import sys
-s = Path(sys.argv[1]).read_text()
-apply = s[s.index('state_backup='):s.index('echo -e "${GREEN}Snapshot applied successfully.')]
-install_idx = apply.index('    if ! install -m 0600 "$state_backup" "$old_data/priv_validator_state.json"')
-assert apply.find('    fix_node_ownership "$old_data"', install_idx) > install_idx
-rollback = s[s.index('rollback_snapshot()'):s.index('wait_for_healthy_service()')]
-assert rollback.index('install -m 0600 "$fresh_state" "$old_data/priv_validator_state.json"') < rollback.index('fix_node_ownership "$old_data"', rollback.index('install -m 0600 "$fresh_state"'))
-PYROOT
-
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
 for args in '--service-mode invalid' '--service-mode' '--unknown'; do

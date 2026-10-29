@@ -16,12 +16,15 @@ grep -q 'prompt_back$' "$menu"
 
 # These completion paths must pause before the menu redraw clears the terminal.
 for pattern in \
-    'run_pinned_child apply_snapshot.sh.*' \
     'sudo systemctl restart' \
     'sudo systemctl stop' \
     'Node removed\. Key backup:'; do
     grep -q "$pattern" "$menu"
 done
+
+# Snapshot import stays unavailable until a chain-bound Testnet 2 source is verified.
+! grep -q 'Apply Snapshot' "$menu"
+grep -q 'Snapshot application is disabled' "$menu"
 
 # The old immediate log-follow return must not regress.
 ! grep -q 'show_logs() { sudo journalctl.*; menu; }' "$menu"
