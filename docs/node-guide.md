@@ -1,187 +1,135 @@
-# Worrell Testnet - Manual Node Guide
+# Worrell Testnet 2 - Manual Node and Ceremony Guide
 
-This guide translates the official Worrell runbook into the Valley paths. Re-check upstream before every live operation.
+This guide follows the official [Testnet 2 ceremony README](https://github.com/worrellchain/networks/blob/main/worrell-testnet-2/README.md) and the [Worrell node runbook](https://github.com/worrellchain/worrell/blob/main/docs/RUNNING-A-NODE.md). Re-check the upstream files before every live operation. Testnet 1 remains separate until 24 November 2026.
 
 ## Network facts
 
 | Field | Value |
 |---|---|
-| Chain ID | `worrell-testnet-1` |
-| Binary | `worrelld` |
-| Release | `v0.1.2` (recommended upstream prerelease) |
-| Home | `~/.worrell` |
+| Chain ID | `worrell-testnet-2` |
+| Binary | `worrelld` v0.2.0 |
+| Home | `~/.worrell-testnet-2` |
 | Denom | `uworrell` (6 decimals) |
 | Minimum gas | `0.025uworrell` |
-| SDK / consensus | Cosmos SDK `v0.53.6` / CometBFT |
-| Genesis SHA256 | `a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd` |
+| Default P2P/RPC/ABCI | `18656` / `18657` / `18658` |
+| Default REST/gRPC/gRPC-Web | `18317` / `18090` / `18091` |
+| Pre-genesis SHA256 | `f5231dc924c762bdbe5aa0605ed6472288c9b71f4b175015e0559edccdd96b94` |
+| Final genesis SHA256 | **UNKNOWN until published** |
+| Final peers | **UNKNOWN until published** |
 
-Official source: [RUNNING-A-NODE.md](https://github.com/worrellchain/worrell/blob/main/docs/RUNNING-A-NODE.md). The live release remains `v0.1.2`; the Valley Cosmovisor menu also has a verified `v0.1.3` staging option for governance plan `v0.1.3` at block `1186000`.
+The default port prefix `18` is Valley-local and keeps this node beside Testnet 1. It is not an upstream protocol parameter.
 
-## Install the binary
+## Install v0.2.0
 
-The recommended path is the official release tarball plus `release_checksum`:
+The official release provides these Linux asset hashes:
 
-```bash
-mkdir -p "$HOME/go/bin" "$HOME/.cache/worrell"
-cd "$HOME/.cache/worrell"
-curl -fsSLO https://github.com/worrellchain/worrell/releases/download/v0.1.2/v0.1.2_linux_amd64.tar.gz
-curl -fsSLO https://github.com/worrellchain/worrell/releases/download/v0.1.2/release_checksum
-grep '  v0.1.2_linux_amd64.tar.gz$' release_checksum | sha256sum -c -
-tar -xzf v0.1.2_linux_amd64.tar.gz
-install worrelld "$HOME/go/bin/worrelld"
-export PATH="$HOME/go/bin:$PATH"
-worrelld version --long | head -5
+| Tarball | SHA-256 |
+|---|---|
+| `v0.2.0_linux_amd64.tar.gz` | `1ccccd39d57467236a2f64ee4809fee4de3cc3f1bc02c47e3e22aa9c6b414c76` |
+| `v0.2.0_linux_arm64.tar.gz` | `e4ad1e1bef4aa4656d03a543076d4cc08f91114a1cf93454218063f05992fb52` |
+
+The Valley installer downloads the matching release asset and `release_checksum`, verifies both, and installs `worrelld`. A source build must use the official `v0.2.0` tag. Confirm:
+
+```
+worrelld version
+# v0.2.0
 ```
 
-The Valley installer persists this canonical path as one `export PATH="$HOME/go/bin:$PATH"` entry in `~/.bash_profile`; re-running it removes prior copies before saving the entry again. Source the profile after installation with `source ~/.bash_profile`. On a root-only RPC host, it instead installs the binary under `/usr/local/bin`, creates the unprivileged `worrell` service account, and uses `/var/lib/worrell` without modifying root's shell profile.
+## Initialise the separate home
 
-Use the matching `linux_arm64` asset on ARM. A source build requires Go `1.25.10+`, git, make, and build-essential:
+Do not reuse `~/.worrell` or its validator key:
 
-```bash
-git clone https://github.com/worrellchain/worrell.git
-cd worrell
-git checkout v0.1.2
-make install
+```
+export WORRELL_HOME="$HOME/.worrell-testnet-2"
+worrelld init <moniker> --chain-id worrell-testnet-2 --default-denom uworrell --home "$WORRELL_HOME"
 ```
 
-## Initialise and join
+The initializer creates the consensus and node keys under `$WORRELL_HOME/config/`. Back up `priv_validator_key.json` securely and never use this key in Testnet 1.
 
-```bash
-export WORRELL_HOME="$HOME/.worrell"
-worrelld init <moniker> --chain-id worrell-testnet-1 --home "$WORRELL_HOME"
-curl -fsSL https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-1/genesis.json \
-  -o "$WORRELL_HOME/config/genesis.json"
-echo 'a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd  '"$WORRELL_HOME/config/genesis.json" | sha256sum -c -
+## Install and verify pre-genesis
+
+The official pre-genesis is:
+
+```
+curl -fsSL https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-2/pre-genesis.json -o "$WORRELL_HOME/config/genesis.json"
+echo 'f5231dc924c762bdbe5aa0605ed6472288c9b71f4b175015e0559edccdd96b94  '"$WORRELL_HOME/config/genesis.json" | sha256sum -c -
 worrelld genesis validate-genesis --home "$WORRELL_HOME"
 ```
 
-Choose one application-state retention policy before starting the service. For a normal validator, use pruned mode:
+The Valley `1i` -> `1` flow performs the same download, checksum, and chain-ID checks. It backs up a different existing genesis before replacement.
 
-```toml
-pruning = "custom"
-pruning-keep-recent = "100"
-pruning-interval = "20"
+## Create the operator account and gentx
+
+Follow the upstream ceremony procedure. Create a key in the separate home and store its mnemonic offline:
+
 ```
-
-For an archive node, retain all application-state history:
-
-```toml
-pruning = "nothing"
-pruning-keep-recent = "0"
-pruning-interval = "0"
-```
-
-Changing from pruned to archive later cannot recreate historical states already deleted. Pruning selection is independent of direct/Cosmovisor runtime.
-
-## Apply a snapshot
-
-Use Valley option `1h` -> provider -> `Pruned`. ITRocket resolves its rotating archive through `https://server-3.itrocket.net/testnet/worrell/.current_state.json`; Sychonix publishes `https://snapshot.sychonix.com/testnet/worrell/worrell-snapshot.tar.lz4`. The guarded helper downloads and validates the archive before downtime, accepts only a top-level `data/` tree, preserves `config/` and `priv_validator_state.json`, and requires `APPLY-WORRELL-SNAPSHOT`. Archive snapshots are not enabled because no provider archive was verified.
-
-Set the official peers in `config.toml`:
-
-```toml
-[p2p]
-persistent_peers = "bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656"
-
-[rpc]
-laddr = "tcp://127.0.0.1:17657"
-```
-
-Set `minimum-gas-prices = "0.025uworrell"` in `app.toml`. The live Grand Valley profile uses prefix `17`: P2P `17656`, RPC `17657`, ABCI `17658`, REST `17317`, gRPC `17090`, gRPC-Web `17091`, and Prometheus `17660`. The official community peer ports remain unchanged.
-
-Live Grand Valley endpoints:
-
-- RPC: `https://lightnode-rpc-worrell.grandvalleys.com`
-- WebSocket: `wss://lightnode-rpc-worrell.grandvalleys.com/websocket`
-- Direct peer: `e812f08760b18ed774369e899763735f80179f76@peer-worrell.grandvalleys.com:17656`
-- Moniker: `grandvalley-lightnode`
-
-The peer endpoint is direct TCP and is not an Nginx HTTP/stream proxy.
-
-## Start and sync
-
-```bash
-worrelld start --home "$WORRELL_HOME"
-worrelld status --home "$WORRELL_HOME" 2>&1 | jq '.sync_info'
-```
-
-Create a validator only when `catching_up` is `false`. The Valley menu provides guarded pruned snapshot application; verify provider metadata and the destructive confirmation before use.
-
-## Key and validator
-
-The text-mode key-creation command prints a new mnemonic only once. Write it down and store it offline before continuing; recovery accepts an existing mnemonic and does not print it back. Avoid terminal recording or transcript tools while creating keys.
-
-```bash
-worrelld keys add <key-name> --home "$WORRELL_HOME" --output text
+worrelld keys add <key-name> --home "$WORRELL_HOME"
 worrelld keys show <key-name> -a --home "$WORRELL_HOME"
-worrelld query bank balances "$(worrelld keys show <key-name> -a --home "$WORRELL_HOME")" --home "$WORRELL_HOME"
-worrelld tendermint show-validator --home "$WORRELL_HOME"
+worrelld genesis add-genesis-account <worrell1...> 500000000uworrell --home "$WORRELL_HOME"
 ```
 
-The Valley default uses 20 WORRELL:
+The official gentx window accepts one gentx per account. The upstream suggested self-delegation is `495000000uworrell`; the allowed range is `1000000uworrell` to `500000000uworrell`. A gentx must use chain ID `worrell-testnet-2`, denomination `uworrell`, commission rate at least `0.05`, and a reachable IP/port memo.
 
-- amount: `20000000uworrell`
-- commission rate: `0.05`
-- commission max rate: `0.25`
-- commission max change rate: `0.01`
-- minimum self-delegation: `1000000` (`1 WORRELL`, not `1 uworrell`)
+The manual command shape is:
 
-Review the generated JSON before submission:
-
-```bash
-worrelld tx staking create-validator validator.json \
-  --from <key-name> --chain-id worrell-testnet-1 --home "$WORRELL_HOME" \
-  --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes
+```
+worrelld genesis gentx <key-name> 495000000uworrell --chain-id worrell-testnet-2 --moniker "<moniker>" --commission-rate 0.05 --commission-max-rate 0.20 --commission-max-change-rate 0.01 --min-self-delegation 1000000 --ip <public-ip-or-hostname> --p2p-port 18656 --home "$WORRELL_HOME"
 ```
 
-### Delegate to a validator
+Valley menu `1i` -> `2` previews this command and does not execute it until you type `CREATE-GENTX`. Review `config/gentx/gentx-*.json`, then submit it manually to the official `worrellchain/networks` repository. Valley does not open pull requests or submit keys.
 
-Valley option `2f` uses the Cosmos SDK `tx staking delegate` command. It first
-requires a reachable local RPC with `catching_up: false`, resolves the local
-key to a `worrell1...` account, validates the target
-`worrellvaloper1...` address, and previews both the account balance and the
-validator record. It submits nothing until you type `yes` at the final review.
+## Apply final genesis
 
-The amount is an integer number of micro-units with exactly one `uworrell`
-suffix. There is no separate `stake` command:
+The coordinator publishes final `genesis.json`, its exact SHA-256, and persistent peers after the gentx window. Those values are currently **UNKNOWN**. Do not substitute the pre-genesis hash for the final hash.
 
-```bash
-worrelld tx staking delegate <worrellvaloper1...> 1000000uworrell \
-  --from <key-name> --chain-id worrell-testnet-1 --home "$WORRELL_HOME" \
-  --node "tcp://127.0.0.1:17657" \
-  --gas auto --gas-adjustment 1.5 --gas-prices 0.025uworrell --yes
+When the values are published, use Valley `1i` -> `3`, or the helper directly:
+
+```
+resources/worrell_genesis_ceremony.sh --mode final-genesis --checksum <published-64-hex-sha256> --peers '<id>@<host>:<port>,<id>@<host>:<port>'
 ```
 
-Review the returned balance, validator record, target address, and exact
-amount. Testnet funds and delegation remain operator-controlled.
+The helper fetches the official final URL, verifies the supplied checksum and `chain_id`, previews the URL/checksum/peers, requires `APPLY-FINAL-GENESIS`, updates only `[p2p] persistent_peers`, installs the file, and runs `worrelld genesis validate-genesis`. It restores the prior config/genesis if the final apply or local validation fails.
 
-Testnet faucet requests are manual and rate-limited by upstream. Never put a mnemonic or private key in a script, URL, issue, or chat.
+Do not edit `genesis.json` or `priv_validator_key.json`. If the checksum fails, stop and download again from the official metadata.
 
-## Service and monitoring
+## Start and monitor
 
-Use systemd with automatic restart and `LimitNOFILE=65536` or higher:
+Start only after final genesis and the published `genesis_time` are available:
 
-```bash
-sudo systemctl status worrelld --no-pager
-sudo journalctl -u worrelld -fn 100 -o cat
-worrelld status --home "$WORRELL_HOME"
-worrelld query slashing signing-info "$(worrelld tendermint show-address --home "$WORRELL_HOME")" --home "$WORRELL_HOME"
+```
+worrelld start --home "$WORRELL_HOME"
+worrelld status --home "$WORRELL_HOME" 2>&1 | jq '.sync_info | {latest_block_height, catching_up}'
 ```
 
-Never run two instances with the same `priv_validator_key.json`. Double-signing is materially worse than ordinary downtime.
+The Valley installer keeps `worrelld-testnet-2.service` stopped after pre-genesis. The final-genesis helper also does not start it automatically. Start it manually at the coordinated time.
 
-## Ports
+## Ports and service isolation
 
-| Service | Default | Recommended exposure |
+| Service | Default | Exposure |
 |---|---:|---|
-| CometBFT P2P | 17656 | Public |
-| CometBFT RPC | 17657 | Localhost / trusted IPs; public RPC is HTTPS above |
-| ABCI | 17658 | Localhost |
-| REST API | 17317 | Localhost unless protected |
-| gRPC | 17090 | Localhost unless protected |
-| gRPC-Web | 17091 | Localhost unless protected |
-| Prometheus | 17660 | Localhost / monitoring network |
+| CometBFT P2P | 18656 | Public direct TCP |
+| CometBFT RPC | 18657 | Localhost/trusted IPs |
+| ABCI | 18658 | Localhost |
+| REST API | 18317 | Localhost unless protected |
+| gRPC | 18090 | Localhost unless protected |
+| gRPC-Web | 18091 | Localhost unless protected |
+| Prometheus | 18660 | Localhost/monitoring network |
 
-## Official endpoints
+Use Valley's prefix prompt if these ports are occupied. Keep Testnet 1 on its existing ports and service. Never run both networks with the same consensus key.
 
-The upstream networks metadata publishes RPC, REST, gRPC, and explorer candidates. Valley displays them as candidates only; availability can change. See [usage.md](usage.md) and the upstream [network metadata](https://github.com/worrellchain/networks/tree/main/worrell-testnet-1).
+## Validator and service safety
+
+- Wait for `catching_up: false` before validator transactions.
+- Keep RPC, REST, gRPC, gRPC-Web, and Prometheus private unless protected.
+- Review `create-validator`, delegation, and `unjail` previews before explicit confirmation.
+- Keep signer backups mode 600 and never restore an old signer state after the node signs again.
+- No Testnet 2 faucet, public RPC, explorer, snapshot, or final peer list is asserted here until official metadata supplies it.
+
+## Official sources
+
+- [Worrell v0.2.0 release](https://github.com/worrellchain/worrell/releases/tag/v0.2.0)
+- [Worrell node runbook](https://github.com/worrellchain/worrell/blob/main/docs/RUNNING-A-NODE.md)
+- [Testnet 2 ceremony README](https://github.com/worrellchain/networks/blob/main/worrell-testnet-2/README.md)
+- [Testnet 2 pre-genesis](https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-2/pre-genesis.json)
+
+last updated by: John

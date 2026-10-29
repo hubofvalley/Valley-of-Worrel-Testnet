@@ -7,7 +7,7 @@ fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
 home="$fixture/home"
 fake="$fixture/bin"
-mkdir -p "$home/cosmovisor/genesis/bin" "$home/cosmovisor/upgrades/v0.1.3/bin" "$home/data" "$fake"
+mkdir -p "$home/cosmovisor/genesis/bin" "$home/cosmovisor/upgrades/v0.2.1/bin" "$home/data" "$fake"
 
 write_fake_app() {
     local path="$1" version="$2"
@@ -23,8 +23,8 @@ EOF
     chmod +x "$path"
 }
 
-write_fake_app "$home/cosmovisor/genesis/bin/worrelld" v0.1.2
-write_fake_app "$home/cosmovisor/upgrades/v0.1.3/bin/worrelld" v0.1.3
+write_fake_app "$home/cosmovisor/genesis/bin/worrelld" v0.2.0
+write_fake_app "$home/cosmovisor/upgrades/v0.2.1/bin/worrelld" v0.2.1
 ln -s genesis "$home/cosmovisor/current"
 printf '%s\n' active > "$fake/service-state"
 printf '%s\n' 0 > "$fake/restarts"
@@ -64,11 +64,11 @@ run_verify() {
 
 # Staging preflight checks the exact upgrade binary while confirming that
 # staging has not activated it.
-run_verify preflight v0.1.3 v0.1.3 1186000 >/dev/null
+run_verify preflight v0.2.1 v0.2.1 2000000 >/dev/null
 
-printf '%s\n' '{"name":"v0.1.3","height":"1186000"}' > "$home/data/upgrade-info.json"
+printf '%s\n' '{"name":"v0.2.1","height":"2000000"}' > "$home/data/upgrade-info.json"
 info_hash_before=$(sha256sum "$home/data/upgrade-info.json" | awk '{print $1}')
-if run_verify post-upgrade v0.1.3 v0.1.3 1186000 >"$fixture/stale.out" 2>&1; then
+if run_verify post-upgrade v0.2.1 v0.2.1 2000000 >"$fixture/stale.out" 2>&1; then
     echo 'stale current unexpectedly passed post-upgrade verification' >&2
     exit 1
 fi
@@ -103,17 +103,17 @@ EOF_COSMOVISOR
     DAEMON_HOME="$home" "$fake/cosmovisor" run start --home "$home" >"$fixture/cosmovisor.out"
 fi
 
-test "$(readlink -f "$home/cosmovisor/current")" = "$(readlink -f "$home/cosmovisor/upgrades/v0.1.3")"
-run_verify post-upgrade v0.1.3 v0.1.3 1186000 >/dev/null
+test "$(readlink -f "$home/cosmovisor/current")" = "$(readlink -f "$home/cosmovisor/upgrades/v0.2.1")"
+run_verify post-upgrade v0.2.1 v0.2.1 2000000 >/dev/null
 [ "$info_hash_before" = "$(sha256sum "$home/data/upgrade-info.json" | awk '{print $1}')" ]
 
 # A historical systemd restart count is allowed when stable, but an
 # increase during the observation window is a failure.
 printf '%s\n' 123 > "$fake/restarts"
 printf '%s\n' 0 > "$fake/show-calls"
-run_verify post-upgrade v0.1.3 v0.1.3 1186000 >/dev/null
+run_verify post-upgrade v0.2.1 v0.2.1 2000000 >/dev/null
 printf '%s\n' 0 > "$fake/show-calls"
-if FAKE_RESTARTS_SECOND=124 run_verify post-upgrade v0.1.3 v0.1.3 1186000 >"$fixture/restart-loop.out" 2>&1; then
+if FAKE_RESTARTS_SECOND=124 run_verify post-upgrade v0.2.1 v0.2.1 2000000 >"$fixture/restart-loop.out" 2>&1; then
     echo 'restart loop unexpectedly passed post-upgrade verification' >&2
     exit 1
 fi

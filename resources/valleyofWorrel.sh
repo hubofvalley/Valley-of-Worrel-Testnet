@@ -8,40 +8,41 @@ export PATH="$HOME/go/bin:/usr/local/bin:$PATH"
 
 if [ -z "${WORRELL_HOME:-}" ]; then
     if [ "${EUID:-$(id -u)}" -eq 0 ]; then
-        WORRELL_HOME="/var/lib/${WORRELL_SERVICE_USER:-worrell}"
+        WORRELL_HOME="/var/lib/${WORRELL_SERVICE_USER:-worrell-testnet-2}"
     else
-        WORRELL_HOME="$HOME/.worrell"
+        WORRELL_HOME="$HOME/.worrell-testnet-2"
     fi
 fi
 if [ "${EUID:-$(id -u)}" -eq 0 ]; then
-    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+    WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env
 else
-    WORRELL_ENV_FILE=${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell.env}
+    WORRELL_ENV_FILE=${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell-testnet-2.env}
 fi
 if [ -r "$WORRELL_ENV_FILE" ]; then
     # shellcheck disable=SC1090
     source "$WORRELL_ENV_FILE"
 fi
-WORRELL_CHAIN_ID=${WORRELL_CHAIN_ID:-worrell-testnet-1}
-WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld}
+WORRELL_CHAIN_ID=${WORRELL_CHAIN_ID:-worrell-testnet-2}
+WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld-testnet-2}
 if [ -z "${WORRELL_SERVICE_USER:-}" ]; then
-    if [ "${EUID:-$(id -u)}" -eq 0 ]; then WORRELL_SERVICE_USER=worrell; else WORRELL_SERVICE_USER=$(id -un); fi
+    if [ "${EUID:-$(id -u)}" -eq 0 ]; then WORRELL_SERVICE_USER=worrell-testnet-2; else WORRELL_SERVICE_USER=$(id -un); fi
 fi
-WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-17}
-WORRELL_TARGET_VERSION=${WORRELL_TARGET_VERSION:-v0.1.2}
+WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-18}
+WORRELL_TARGET_VERSION=${WORRELL_TARGET_VERSION:-v0.2.0}
 WORRELL_UNSAFE_SKIP_BACKUP=${WORRELL_UNSAFE_SKIP_BACKUP:-false}
-readonly WORRELL_UPGRADE_V0_1_3="v0.1.3"
-readonly WORRELL_UPGRADE_PLAN_V0_1_3="v0.1.3"
-readonly WORRELL_UPGRADE_HEIGHT_V0_1_3="1186000"
-WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-https://lightnode-rpc-worrell.grandvalleys.com}
-WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-https://lightnode-rpc-worrell.grandvalleys.com,https://worrel-testnet-rpc.oshvank.xyz,https://worrell-testnet-rpc.itrocket.net,https://worrell-testnet-rpc.nodesync.top,https://worrell-testnet-rpc.bonynode.online,https://rpc-worrell.test.onenov.xyz,https://worrellchain-rpctest.codeblocklabs.com,https://t-worrell.rpc.utsa.tech}
-WORRELL_PEERS=${WORRELL_PEERS:-bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656}
-WORRELL_PUBLIC_PEER=${WORRELL_PUBLIC_PEER:-e812f08760b18ed774369e899763735f80179f76@peer-worrell.grandvalleys.com:17656}
-readonly VALLEY_INSTALLER_SHA256="af9d55468d805549fe5557abd3c06e1e7643a70e8426f0ff171def9aa962be33"
-readonly VALLEY_UPDATER_SHA256="fa074336f167c6189e05847bc87e448994bfdc335003ec5c20cb2d47b2243c14"
-readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="c8551419467995a738313160b94331630b0f6f536059d2829010779b956c5a32"
-readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="3f5cd5a1f56638936a76bf7a2d550ce458f28bd7458837ca9ec2f7346d0748b6"
-readonly VALLEY_SNAPSHOT_SHA256="3b10c2e7f81b72d6d13b1b5598527c6608deccaf90240af0b2b089dd7e22931b"
+readonly WORRELL_PRE_GENESIS_SHA256="f5231dc924c762bdbe5aa0605ed6472288c9b71f4b175015e0559edccdd96b94"
+readonly WORRELL_FINAL_GENESIS_URL="https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-2/genesis.json"
+readonly WORRELL_DEFAULT_UPGRADE_VERSION="v0.2.0"
+WORRELL_PUBLIC_RPC=${WORRELL_PUBLIC_RPC:-}
+WORRELL_PUBLIC_RPCS=${WORRELL_PUBLIC_RPCS:-}
+WORRELL_PEERS=${WORRELL_PEERS:-}
+WORRELL_PUBLIC_PEER=${WORRELL_PUBLIC_PEER:-}
+readonly VALLEY_INSTALLER_SHA256="1059835801dacb4383a8d54a593a0afde7f0366d6c4d18f00dbb077e46cdfcc1"
+readonly VALLEY_UPDATER_SHA256="be34176f8b6a9d27e939ba7db7e8bcbf44d2fe577efc36eb8fbb1f25aaf52107"
+readonly VALLEY_COSMOVISOR_MIGRATION_SHA256="0abdc7647c9df49e96ec8b16f74968e1ae5501ab94f4e8d941d05fd70ee82d5d"
+readonly VALLEY_COSMOVISOR_UPGRADE_SHA256="784e2d727a6c95c0e404f4f531cd8e955eebbd7e3838f5ebe9a7dee303397697"
+readonly VALLEY_SNAPSHOT_SHA256="4bb4b5c3af91119c801f5f053470ff3535e9abde4dd81e72d1ae1e5e611793f3"
+readonly VALLEY_GENESIS_CEREMONY_SHA256="f7c067cf346c07e403b6371cd6f7e92735d130d1637d8f5065e2c9d538ee82ef"
 readonly VALLEY_SCRIPT_COMMIT="829fdfa5556daaaed056b351f54d9a67c4060eb7"
 readonly VALLEY_SCRIPT_BASE="https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/829fdfa5556daaaed056b351f54d9a67c4060eb7/resources"
 
@@ -94,12 +95,13 @@ get_local_rpc_port() {
 
 local_status() {
     local port=${1:-$(get_local_rpc_port)}
-    port=${port:-17657}
+    port=${port:-18657}
     curl -m 5 -fsS "http://127.0.0.1:${port}/status" 2>/dev/null
 }
 
 network_status() {
     local rpc response
+    [ -n "$WORRELL_PUBLIC_RPCS" ] || return 1
     IFS=',' read -r -a rpc_list <<< "$WORRELL_PUBLIC_RPCS"
     for rpc in "${rpc_list[@]}"; do
         response=$(curl -m 5 -fsS "${rpc%/}/status" 2>/dev/null || true)
@@ -129,6 +131,7 @@ run_pinned_child() {
         cosmovisor_migration.sh) expected="$VALLEY_COSMOVISOR_MIGRATION_SHA256" ;;
         worrelld_cosmovisor_upgrade.sh) expected="$VALLEY_COSMOVISOR_UPGRADE_SHA256" ;;
         apply_snapshot.sh) expected="$VALLEY_SNAPSHOT_SHA256" ;;
+        worrell_genesis_ceremony.sh) expected="$VALLEY_GENESIS_CEREMONY_SHA256" ;;
         *) echo -e "${RED}Unknown child script. Refusing execution.${RESET}" >&2; return 1 ;;
     esac
     path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$script"
@@ -173,31 +176,23 @@ ${YELLOW}| Category  | Requirements |
 }
 
 show_endpoints() {
-    echo -e "${GREEN}
-Worrell useful links:${RESET}
-- Website: ${BLUE}https://worrellchain.com${RESET}
-- Node guide: ${BLUE}https://github.com/worrellchain/worrell/blob/main/docs/RUNNING-A-NODE.md${RESET}
-- GitHub: ${BLUE}https://github.com/worrellchain/worrell${RESET}
-- Network metadata: ${BLUE}https://github.com/worrellchain/networks/tree/main/worrell-testnet-1${RESET}
-- Validator Telegram: ${BLUE}https://t.me/worrellvalidators${RESET}
-- Faucet: ${BLUE}http://164.68.98.186:4500${RESET}
-
-${GREEN}Network facts:${RESET}
-- Chain ID: ${CYAN}${WORRELL_CHAIN_ID}${RESET}
-- Live RPC: ${BLUE}${WORRELL_PUBLIC_RPC}${RESET}
-- Live WebSocket: ${BLUE}wss://lightnode-rpc-worrell.grandvalleys.com/websocket${RESET}
-- Live direct peer: ${CYAN}${WORRELL_PUBLIC_PEER}${RESET}
-- Default port prefix: ${CYAN}17${RESET} (P2P 17656, RPC 17657, ABCI 17658, REST 17317, gRPC 17090, gRPC-Web 17091, Prometheus 17660)
-- Public RPC candidates (availability not guaranteed): ${BLUE}${WORRELL_PUBLIC_RPCS//,/, }${RESET}
-- Official peers: ${CYAN}${WORRELL_PEERS}${RESET}
-- Genesis SHA256: ${CYAN}a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd${RESET}
-- Explorers: ${BLUE}https://test.anode.team/worrell${RESET}, ${BLUE}https://explorer.oshvank.xyz/worrel-testnet${RESET}
-
-${GREEN}Connect with Grand Valley:${RESET}
-- X: ${BLUE}https://x.com/bacvalley${RESET}
-- GitHub: ${BLUE}https://github.com/hubofvalley${RESET}
-- Email: ${BLUE}letsbuidltogether@grandvalleys.com${RESET}
-"
+    printf '%b\n' "${GREEN}Worrell testnet-2 links:${RESET}"
+    printf '%s\n' "- Website: https://worrellchain.com"
+    printf '%s\n' "- Node guide: https://github.com/worrellchain/worrell/blob/main/docs/RUNNING-A-NODE.md"
+    printf '%s\n' "- GitHub: https://github.com/worrellchain/worrell"
+    printf '%s\n' "- Network metadata: https://github.com/worrellchain/networks/tree/main/worrell-testnet-2"
+    printf '%s\n' "- Genesis ceremony guide: https://github.com/worrellchain/networks/blob/main/worrell-testnet-2/README.md"
+    printf '%s\n' "- Validator Telegram: https://t.me/worrellvalidators"
+    printf '%s\n' ''
+    printf '%b\n' "${GREEN}Network facts:${RESET}"
+    printf '%s\n' "- Chain ID: ${WORRELL_CHAIN_ID}"
+    printf '%s\n' "- Binary: worrelld ${WORRELL_TARGET_VERSION}"
+    printf '%s\n' "- Node home: ${WORRELL_HOME}"
+    printf '%s\n' "- Default port prefix: ${WORRELL_PORT_PREFIX} (P2P ${WORRELL_PORT_PREFIX}656, RPC ${WORRELL_PORT_PREFIX}657, ABCI ${WORRELL_PORT_PREFIX}658, REST ${WORRELL_PORT_PREFIX}317, gRPC ${WORRELL_PORT_PREFIX}090, gRPC-Web ${WORRELL_PORT_PREFIX}091, Prometheus ${WORRELL_PORT_PREFIX}660)"
+    printf '%s\n' "- Pre-genesis URL: https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-2/pre-genesis.json"
+    printf '%s\n' "- Pre-genesis SHA256: ${WORRELL_PRE_GENESIS_SHA256}"
+    printf '%s\n' "- Final genesis URL: ${WORRELL_FINAL_GENESIS_URL} (checksum and peers are published by the coordinator; current value is unknown)"
+    printf '%s\n' "- Public RPC and peer: not published for testnet-2 at this release"
 }
 
 prompt_back() { read -r -p "Press Enter to go back to main menu..."; }
@@ -249,10 +244,10 @@ install_node() {
     # shellcheck disable=SC1091
     source "$HOME/.bash_profile" 2>/dev/null || true
     if [ -z "${WORRELL_HOME:-}" ]; then
-        if [ "${EUID:-$(id -u)}" -eq 0 ]; then WORRELL_HOME="/var/lib/${WORRELL_SERVICE_USER:-worrell}"; else WORRELL_HOME="$HOME/.worrell"; fi
+        if [ "${EUID:-$(id -u)}" -eq 0 ]; then WORRELL_HOME="/var/lib/${WORRELL_SERVICE_USER:-worrell-testnet-2}"; else WORRELL_HOME="$HOME/.worrell-testnet-2"; fi
     fi
-    WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld}
-    WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-17}
+    WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld-testnet-2}
+    WORRELL_PORT_PREFIX=${WORRELL_PORT_PREFIX:-18}
     if [ -r "$WORRELL_ENV_FILE" ]; then
         # shellcheck disable=SC1090
         source "$WORRELL_ENV_FILE"
@@ -484,40 +479,17 @@ show_cosmovisor_status() {
 }
 
 stage_cosmovisor_upgrade() {
-    local choice version upgrade_name upgrade_height answer
+    local version upgrade_name upgrade_height answer
     echo -e "${ORANGE}Stage a Cosmovisor upgrade binary${RESET}"
-    echo "1. v0.1.3 — governance plan v0.1.3 at block ${WORRELL_UPGRADE_HEIGHT_V0_1_3} (recommended)"
-    echo "c. Custom verified release and upgrade plan"
-    echo "b. Back"
-    read -r -p "Choose: " choice
-    case "${choice,,}" in
-        1)
-            version="$WORRELL_UPGRADE_V0_1_3"
-            upgrade_name="$WORRELL_UPGRADE_PLAN_V0_1_3"
-            upgrade_height=""
-            echo -e "${YELLOW}Governance mode: no local --upgrade-height is passed; the chain plan supplies block ${WORRELL_UPGRADE_HEIGHT_V0_1_3}.${RESET}"
-            read -r -p "Stage $version for governance plan $upgrade_name? (yes/no): " answer
-            ;;
-        c)
-            read -r -p "Release version (for example v0.1.2): " version
-            read -r -p "On-chain upgrade name: " upgrade_name
-            read -r -p "Emergency upgrade height (leave empty for governance plan): " upgrade_height
-            read -r -p "Stage this verified release? (yes/no): " answer
-            ;;
-        b|"")
-            menu
-            return
-            ;;
-        *)
-            echo -e "${RED}Invalid option.${RESET}"
-            prompt_back
-            menu
-            return
-            ;;
-    esac
+    echo "The testnet-2 initial binary is ${WORRELL_DEFAULT_UPGRADE_VERSION}. Future upgrade plans are not published yet."
+    read -r -p "Release version [${WORRELL_DEFAULT_UPGRADE_VERSION}]: " version
+    version=${version:-${WORRELL_DEFAULT_UPGRADE_VERSION}}
+    read -r -p "Exact on-chain upgrade name: " upgrade_name
+    read -r -p "Emergency upgrade height (leave empty for a governance plan): " upgrade_height
+    read -r -p "Stage this verified release? (yes/no): " answer
     if [[ "${answer,,}" == yes ]]; then
-        if run_pinned_child worrelld_cosmovisor_upgrade.sh "$VALLEY_COSMOVISOR_UPGRADE_SHA256" "$version" "$upgrade_name" "$upgrade_height"; then
-            if ! verify_cosmovisor_handoff preflight "$version" "$upgrade_name" "$upgrade_height"; then
+        if run_pinned_child worrelld_cosmovisor_upgrade.sh "${VALLEY_COSMOVISOR_UPGRADE_SHA256}" "${version}" "${upgrade_name}" "${upgrade_height}"; then
+            if ! verify_cosmovisor_handoff preflight "${version}" "${upgrade_name}" "${upgrade_height}"; then
                 echo -e "${RED}Staging completed but preflight verification failed. Do not restart the service; review the diagnostics above.${RESET}" >&2
             fi
         else
@@ -531,10 +503,7 @@ stage_cosmovisor_upgrade() {
 }
 
 verify_cosmovisor_menu() {
-    local choice phase version upgrade_name upgrade_height default_version default_name default_height
-    default_version="$WORRELL_UPGRADE_V0_1_3"
-    default_name="$WORRELL_UPGRADE_PLAN_V0_1_3"
-    default_height=""
+    local choice phase version upgrade_name upgrade_height
     echo -e "${ORANGE}Verify Cosmovisor handoff${RESET}"
     echo "1. Verify staged binary before the upgrade"
     echo "2. Verify post-upgrade activation and recovery"
@@ -546,16 +515,12 @@ verify_cosmovisor_menu() {
         b|"") manage_cosmovisor; return ;;
         *) echo -e "${RED}Invalid option.${RESET}"; prompt_back; menu; return ;;
     esac
-    read -r -p "Release version [$default_version]: " version
-    version="${version:-$default_version}"
-    read -r -p "Exact governance plan / upgrade name [$default_name]: " upgrade_name
-    upgrade_name="${upgrade_name:-$default_name}"
-    if [ "$upgrade_name" = "$default_name" ]; then
-        default_height="$WORRELL_UPGRADE_HEIGHT_V0_1_3"
-    fi
-    read -r -p "Expected upgrade height [${default_height:-none}; leave empty if unknown]: " upgrade_height
-    upgrade_height="${upgrade_height:-$default_height}"
-    if ! verify_cosmovisor_handoff "$phase" "$version" "$upgrade_name" "$upgrade_height"; then
+    read -r -p "Release version [${WORRELL_DEFAULT_UPGRADE_VERSION}]: " version
+    version=${version:-${WORRELL_DEFAULT_UPGRADE_VERSION}}
+    read -r -p "Exact governance plan / upgrade name (required): " upgrade_name
+    [ -n "${upgrade_name}" ] || { echo -e "${RED}An exact upgrade name is required.${RESET}"; prompt_back; menu; return; }
+    read -r -p "Expected upgrade height (leave empty if unknown): " upgrade_height
+    if ! verify_cosmovisor_handoff "${phase}" "${version}" "${upgrade_name}" "${upgrade_height}"; then
         echo -e "${RED}Cosmovisor verification failed. Keep data/upgrade-info.json intact and review the diagnostics above.${RESET}" >&2
     fi
     prompt_back
@@ -603,6 +568,14 @@ apply_snapshot() {
     menu
 }
 
+genesis_ceremony() {
+    if ! run_pinned_child worrell_genesis_ceremony.sh "$VALLEY_GENESIS_CEREMONY_SHA256" --mode interactive; then
+        echo -e "${RED}Genesis ceremony flow failed. Review the output above; no service was started automatically.${RESET}" >&2
+    fi
+    prompt_back
+    menu
+}
+
 update_node() {
     local mode
     mode=$(runtime_mode)
@@ -632,7 +605,7 @@ update_node() {
 
 show_status() {
     local lh nh diff catching port
-    lh=$(local_height || true); nh=$(network_height || true); port=$(get_local_rpc_port); port=${port:-17657}
+    lh=$(local_height || true); nh=$(network_height || true); port=$(get_local_rpc_port); port=${port:-18657}
     catching=$(local_catching_up "$port")
     echo -e "${GREEN}Worrell node status${RESET}"
     echo "Local RPC: http://127.0.0.1:${port}"
@@ -662,7 +635,10 @@ set_peers() {
     echo "1. Restore official peers"; echo "2. Enter peers manually"; echo "3. Back"
     read -r -p "Choose: " choice
     case "$choice" in
-        1) peers="$WORRELL_PEERS" ;;
+        1)
+            peers="$WORRELL_PEERS"
+            [ -n "$peers" ] || { echo -e "${YELLOW}Final-genesis peers are not published yet. Use 1i after the coordinator publishes them.${RESET}"; prompt_back; menu; return; }
+            ;;
         2) read -r -p "persistent_peers (<id>@<host>:<port>,...): " peers ;;
         *)
             echo -e "${YELLOW}Peer configuration cancelled.${RESET}"
@@ -842,7 +818,7 @@ resolve_worrell_key_address() {
 local_rpc_is_synced() {
     local port response
     port=$(get_local_rpc_port)
-    port=${port:-17657}
+    port=${port:-18657}
     response=$(local_status "$port") || return 1
     jq -e --arg chain "$WORRELL_CHAIN_ID" \
         '.result.node_info.network == $chain and .result.sync_info.catching_up == false' \
@@ -852,7 +828,7 @@ local_rpc_is_synced() {
 delegate_to_validator() {
     local name validator amount key_address rpc balance_preview validator_preview answer port
     port=$(get_local_rpc_port)
-    port=${port:-17657}
+    port=${port:-18657}
     rpc="tcp://127.0.0.1:$port"
     if ! local_rpc_is_synced; then
         echo -e "${RED}The local Worrell RPC is unavailable or the node is not confirmed synced. Wait for catching_up=false, then retry.${RESET}"
@@ -976,7 +952,7 @@ worrell_root_mode() {
 }
 
 managed_worrell_home_for_mode() {
-    local root_mode="$1" service_user="${WORRELL_SERVICE_USER:-worrell}"
+    local root_mode="$1" service_user="${WORRELL_SERVICE_USER:-worrell-testnet-2}"
     if [ "$root_mode" = yes ]; then
         [[ "$service_user" =~ ^[a-z_][a-z0-9_-]*[$]?$ ]] || return 1
         printf '/var/lib/%s\n' "$service_user"
@@ -988,7 +964,7 @@ managed_worrell_home_for_mode() {
     esac
     [ "$HOME" != "/" ] || return 1
     case "$HOME" in */) return 1 ;; esac
-    printf '%s/.worrell\n' "$HOME"
+    printf '%s/.worrell-testnet-2\n' "$HOME"
 }
 
 managed_worrell_home() {
@@ -1067,7 +1043,7 @@ write_signer_backup_manifest() {
 verify_signer_backup_archive() {
     local archive="$1" verify_dir listing manifest rel entry_count entry expected_size expected_sha actual_size actual_sha
     shift
-    verify_dir=$(mktemp -d "$HOME/.worrell-signer-verify.XXXXXX") || return 1
+    verify_dir=$(mktemp -d "$HOME/.worrell-testnet-2-signer-verify.XXXXXX") || return 1
     chmod 700 "$verify_dir" || { rm -rf -- "$verify_dir"; return 1; }
     if ! tar -xzf "$archive" --no-same-owner --no-same-permissions -C "$verify_dir"; then
         rm -rf -- "$verify_dir"
@@ -1113,7 +1089,7 @@ create_signer_backup() {
     if [ -e "$WORRELL_HOME/config/node_key.json" ]; then
         files+=(config/node_key.json)
     fi
-    stage=$(mktemp -d "$HOME/.worrell-signer-backup.XXXXXX") || {
+    stage=$(mktemp -d "$HOME/.worrell-testnet-2-signer-backup.XXXXXX") || {
         echo -e "${RED}Could not create a private signer backup workspace.${RESET}" >&2
         return 1
     }
@@ -1216,7 +1192,7 @@ prepare_delete_unit_backup() {
             echo -e "${RED}The Worrell service unit is missing, empty, or not a regular file; deletion refused.${RESET}" >&2
             return 1
         fi
-        WORRELL_DELETE_UNIT_BACKUP_DIR=$(mktemp -d "$HOME/.worrell-delete-unit.XXXXXX") || {
+        WORRELL_DELETE_UNIT_BACKUP_DIR=$(mktemp -d "$HOME/.worrell-testnet-2-delete-unit.XXXXXX") || {
             echo -e "${RED}Could not create a private service-unit rollback workspace; deletion refused.${RESET}" >&2
             return 1
         }
@@ -1395,6 +1371,7 @@ show_guidelines() {
     echo "- 1a installs/redeploys; choose pruned/archive storage and direct worrelld/Cosmovisor runtime. Existing data is moved to a timestamped backup."
     echo "- 1b updates the binary with release checksum verification; Cosmovisor nodes use 1g."
     echo "- 1h applies a verified pruned snapshot from ITRocket or Sychonix; it preserves validator state and config."
+    echo "- 1i fetches verified pre-genesis, previews/confirms a gentx, or applies final genesis with its published checksum and peers."
     echo "- 1g manages Cosmovisor: migration, status, and verified upgrade staging."
     echo "- 1c compares local/public heights; wait for catching_up=false before staking."
     echo "- 1d follows service logs; press Ctrl+C to return."
@@ -1426,6 +1403,7 @@ menu() {
     echo "   f. Query account balance"
     echo "   g. Manage Cosmovisor"
     echo "   h. Apply Snapshot"
+    echo "   i. Genesis ceremony"
     echo -e "${GREEN}2. Validator/Key Interactions${RESET}"
     echo "   a. Create / recover / list keys"
     echo "   b. Show consensus public key"
@@ -1441,7 +1419,7 @@ menu() {
     echo "4. Show Endpoints & Useful Links"
     echo "5. Show Guidelines"
     echo -e "${RED}6. Exit${RESET}"
-    echo -e "${YELLOW}Reminder: source ~/.bash_profile after installation.${RESET}"
+    echo -e "${YELLOW}Reminder: testnet-1 keeps running until 24 Nov 2026; this menu targets the separate testnet-2 home and service.${RESET}"
     echo "Let's Buidl Worrell Together - Grand Valley"
     read -r -p "Choose an option (e.g., 1a or 1 then a): " option
     if [[ "$option" =~ ^[1-3][a-z]$ ]]; then main=${option:0:1}; sub=${option:1:1}; else main=$option; sub=""; fi
@@ -1457,6 +1435,7 @@ menu() {
                 f) query_balance ;;
                 g) manage_cosmovisor ;;
                 h) apply_snapshot ;;
+                i) genesis_ceremony ;;
                 *) menu ;;
             esac
             ;;

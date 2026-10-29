@@ -31,19 +31,19 @@ grep -q 'rejects `--chain-id` on `start`' "$repo/docs/cosmovisor.md"
 grep -q 'cosmovisor_migration.sh' "$menu"
 grep -q 'worrelld_cosmovisor_upgrade.sh' "$menu"
 grep -q 'VALLEY_COSMOVISOR_MIGRATION_SHA256' "$menu"
-grep -q 'WORRELL_UPGRADE_V0_1_3="v0.1.3"' "$menu"
-grep -q 'WORRELL_UPGRADE_PLAN_V0_1_3="v0.1.3"' "$menu"
-grep -q 'WORRELL_UPGRADE_HEIGHT_V0_1_3="1186000"' "$menu"
+grep -q 'WORRELL_DEFAULT_UPGRADE_VERSION=\"v0.2.0\"' "$menu"
+! grep -q 'WORRELL_UPGRADE_V0_1_3' "$menu"
+! grep -q 'WORRELL_UPGRADE_HEIGHT_V0_1_3' "$menu"
 grep -q 'verify_cosmovisor_handoff' "$menu"
 grep -q 'NRestarts' "$menu"
 grep -q 'Keep data/upgrade-info.json intact' "$menu"
 grep -q 'stage_cosmovisor_upgrade' "$menu"
-grep -q 'no local --upgrade-height is passed' "$menu"
+grep -q 'Future upgrade plans are not published yet' "$menu"
 grep -q 'VALLEY_COSMOVISOR_UPGRADE_SHA256' "$menu"
 grep -q '"cosmovisor"' "$repo/VALLEY.json"
-jq -e '.upgrade_options[] | select(.tag == "v0.1.3" and .governance_plan_name == "v0.1.3" and .governance_upgrade_height == "1186000")' "$repo/VERSIONS.json" >/dev/null
-grep -q 'b6e8687d1af51f8dea81c1ba6ecd93b358ce6bb80468159c1c7f70d4b908a6ec' "$repo/VERSIONS.json"
-grep -q '11c2e324b03693380515e97b8090a86f132bc4ea467d80d0e8d05709d15ee5d0' "$repo/VERSIONS.json"
+jq -e '.upgrade_options == []' "$repo/VERSIONS.json" >/dev/null
+! grep -q 'b6e8687d1af51f8dea81c1ba6ecd93b358ce6bb80468159c1c7f70d4b908a6ec' "$repo/VERSIONS.json"
+! grep -q '11c2e324b03693380515e97b8090a86f132bc4ea467d80d0e8d05709d15ee5d0' "$repo/VERSIONS.json"
 
 # The predefined governance option must pass the plan name and an empty
 # emergency height to the staging helper.
@@ -51,18 +51,16 @@ stage_fixture=$(mktemp)
 trap 'rm -f "$stage_fixture"' EXIT
 {
     printf '%s\n' 'RED= GREEN= ORANGE= YELLOW= RESET='
-    printf '%s\n' 'WORRELL_UPGRADE_V0_1_3=v0.1.3'
-    printf '%s\n' 'WORRELL_UPGRADE_PLAN_V0_1_3=v0.1.3'
-    printf '%s\n' 'WORRELL_UPGRADE_HEIGHT_V0_1_3=1186000'
+    printf '%s\n' 'WORRELL_DEFAULT_UPGRADE_VERSION=v0.2.0'
     printf '%s\n' 'VALLEY_COSMOVISOR_UPGRADE_SHA256=fixture'
     printf '%s\n' 'menu() { :; }' 'prompt_back() { :; }'
     printf '%s\n' 'verify_cosmovisor_handoff() { :; }'
     printf '%s\n' 'run_pinned_child() { printf "CAPTURE=%s|%s|%s|%s|%s\\n" "$@"; }'
     sed -n '/^stage_cosmovisor_upgrade()/,/^}/p' "$menu"
-    printf '%s\n' 'printf "1\\nyes\\n" | stage_cosmovisor_upgrade'
+    printf '%s\n' 'printf "v0.2.0\\nfuture-plan\\n\\nyes\\n" | stage_cosmovisor_upgrade'
 } > "$stage_fixture"
 stage_output=$(bash "$stage_fixture")
-grep -q 'CAPTURE=worrelld_cosmovisor_upgrade.sh|fixture|v0.1.3|v0.1.3|' <<< "$stage_output"
+grep -q 'CAPTURE=worrelld_cosmovisor_upgrade.sh|fixture|v0.2.0|future-plan|' <<< "$stage_output"
 
 rm -f "$stage_fixture"
 trap - EXIT
@@ -76,18 +74,18 @@ grep -q 'WORRELL_HOME/cosmovisor/current/bin/worrelld' "$menu"
 
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
-mkdir -p "$fixture/.worrell/cosmovisor/current/bin"
-touch "$fixture/.worrell/cosmovisor/current/bin/worrelld"
-chmod +x "$fixture/.worrell/cosmovisor/current/bin/worrelld"
+mkdir -p "$fixture/.worrell-testnet-2/cosmovisor/current/bin"
+touch "$fixture/.worrell-testnet-2/cosmovisor/current/bin/worrelld"
+chmod +x "$fixture/.worrell-testnet-2/cosmovisor/current/bin/worrelld"
 cat > "$fixture/effective" <<'EOF'
 /home/test/go/bin/cosmovisor run start
 EOF
 awk '/^echo -e "\$LOGO"/{exit} {print}' "$menu" > "$fixture/functions.sh"
-HOME="$fixture" WORRELL_HOME="$fixture/.worrell" WORRELL_SERVICE_NAME=worrelld bash -c '
+HOME="$fixture" WORRELL_HOME="$fixture/.worrell-testnet-2" WORRELL_SERVICE_NAME=worrelld bash -c '
   sudo() { if [ "$1" = systemctl ] && [ "$2" = show ]; then cat "$HOME/effective"; else return 1; fi; }
   source "$HOME/functions.sh"
   test "$(runtime_mode)" = cosmovisor
-  test "$(worrell_bin)" = "$HOME/.worrell/cosmovisor/current/bin/worrelld"
+  test "$(worrell_bin)" = "$HOME/.worrell-testnet-2/cosmovisor/current/bin/worrelld"
   printf "/home/test/go/bin/worrelld start --home /tmp\n" > "$HOME/effective"
   test "$(runtime_mode)" = direct
   printf "ambiguous\n" > "$HOME/effective"
@@ -117,7 +115,7 @@ echo 'Worrell Cosmovisor routing tests: PASS'
 # the unit, profile, and both active/enabled states.
 rollback_fixture=$(mktemp -d)
 rollback_bin="$rollback_fixture/bin"
-mkdir -p "$rollback_bin" "$rollback_fixture/home/go/bin" "$rollback_fixture/home/.worrell/config" "$rollback_fixture/systemd"
+mkdir -p "$rollback_bin" "$rollback_fixture/home/go/bin" "$rollback_fixture/home/.worrell-testnet-2/config" "$rollback_fixture/systemd"
 touch "$rollback_fixture/home/go/bin/worrelld"
 chmod +x "$rollback_fixture/home/go/bin/worrelld"
 printf 'original profile\n' > "$rollback_fixture/home/.bash_profile"
@@ -148,7 +146,7 @@ exit 1
 EOS
 chmod +x "$rollback_bin"/*
 set +e
-HOME="$rollback_fixture/home" PATH="$rollback_bin:$PATH" WORRELL_HOME="$rollback_fixture/home/.worrell" WORRELL_SERVICE_NAME=worrelld WORRELL_SYSTEMD_UNIT_DIR="$rollback_fixture/systemd" FAKE_SYSTEMD_STATE="$rollback_fixture/state" bash "$migration" >/tmp/worrel-migration-failure.out 2>&1
+HOME="$rollback_fixture/home" PATH="$rollback_bin:$PATH" WORRELL_HOME="$rollback_fixture/home/.worrell-testnet-2" WORRELL_SERVICE_NAME=worrelld WORRELL_SYSTEMD_UNIT_DIR="$rollback_fixture/systemd" FAKE_SYSTEMD_STATE="$rollback_fixture/state" bash "$migration" >/tmp/worrel-migration-failure.out 2>&1
 migration_rc=$?
 set -e
 test "$migration_rc" -ne 0

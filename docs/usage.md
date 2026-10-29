@@ -1,122 +1,113 @@
-# Valley of Worrell - Usage Guide
+# Valley of Worrell - Testnet 2 Usage Guide
+
+This repository targets `worrell-testnet-2` only. Testnet 1 remains separate until 24 November 2026.
 
 ## Run
 
-Run the reviewed public launcher directly:
+Run as the node OS user:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/main/resources/valleyofWorrel.sh)
 ```
 
-Run as the node OS user. Do not use `sudo bash` when a normal node user exists; the scripts request sudo only for packages, firewall, and systemd operations. On a root-only RPC host, the installer creates a dedicated `worrell` service user, uses `/var/lib/worrell`, and writes the service with that unprivileged account.
+Do not use `sudo bash` when a normal node user exists. The default home is `~/.worrell-testnet-2`, the default service is `worrelld-testnet-2.service`, and the Valley-local default port prefix is `18`:
+
+| Role | Default | Exposure |
+|---|---:|---|
+| CometBFT P2P | 18656 | Public |
+| CometBFT RPC | 18657 | Loopback |
+| ABCI | 18658 | Loopback |
+| Prometheus | 18660 | Loopback |
+| REST API | 18317 | Loopback |
+| gRPC | 18090 | Loopback |
+| gRPC-Web | 18091 | Loopback |
+
+The prefix is local operator configuration, not a protocol parameter. The installer uses `/var/lib/worrell-testnet-2` and `/etc/worrelld-testnet-2/worrelld.env` in root-only mode.
 
 ## Menu options
 
-### 1. Node Interactions
-
 | Option | Behaviour | Risk |
 |---|---|---|
-| `1a` | Deploys or redeploys the node through the audited installer, then asks whether to use pruned or archive storage, and whether to run the service directly with `worrelld` or through pinned Cosmovisor. Backs up an existing `~/.worrell` before replacement. | High: replaces node data after confirmation. |
-| `1b` | Updates the pinned `worrelld` release after checksum verification when the node is using the direct systemd binary. Cosmovisor-managed nodes are routed to `1g`. | Medium: service restart/downtime. |
-| `1c` | Shows local and public heights, chain ID, catching-up state, and block difference. | Read-only. |
-| `1d` | Follows the selected service journal. | Read-only. |
-| `1e` | Sets manual persistent peers or restores the two peers from official network metadata. | Medium: changes config. |
-| `1f` | Queries an operator key balance. | Read-only. |
-| `1g` | Manages Cosmovisor: migrates an existing node, shows status, stages a verified upgrade binary, or verifies a staged/post-upgrade hand-off. The staging menu includes the predefined official `v0.1.3` governance option and a custom verified-release path. | Medium/high: service unit changes or upgrade preparation. |
-| `1h` | Applies a verified pruned snapshot from ITRocket or Sychonix after archive validation and explicit confirmation. Preserves config and validator state. | High: replaces node data after confirmation. |
+| `1a` | Installs or redeploys Testnet 2 with verified pre-genesis, v0.2.0, selected pruning, and direct/Cosmovisor runtime. The service is enabled but remains stopped until final genesis is applied. | High: replaces the node home after confirmation. |
+| `1b` | Updates a direct `worrelld` binary after upstream checksum and v0.2.0 asset verification. | Medium: service restart/downtime. |
+| `1c` | Shows local height, unknown/unavailable public height, chain ID, and catching-up status. | Read-only. |
+| `1d` | Follows the configured service journal. | Read-only. |
+| `1e` | Sets persistent peers manually. Coordinator peers remain UNKNOWN until final genesis is published. | Medium: changes config. |
+| `1f` | Queries an operator key balance through the local RPC. | Read-only. |
+| `1g` | Migrates to Cosmovisor, shows status, stages a verified future release, or verifies a staged hand-off. No Testnet 2 upgrade plan is assumed. | Medium/high. |
+| `1h` | Runs the guarded snapshot helper. Snapshot providers for Testnet 2 are UNKNOWN until verified; do not copy Testnet 1 state. | High: replaces data after confirmation. |
+| `1i` | Opens the genesis ceremony: verifies pre-genesis, previews/confirms gentx, or applies final genesis with a required checksum and peers. | High: changes genesis/config; gentx is signed. |
+| `2a` | Lists, creates, or recovers keys. Mnemonics remain local and are shown only by the binary. | Sensitive local key operation. |
+| `2b` | Shows the consensus public key. | Read-only. |
+| `2c` | Previews and submits `create-validator` only after explicit confirmation and local sync checks. | On-chain transaction. |
+| `2d` | Submits `unjail` only after explicit confirmation. | On-chain transaction. |
+| `2e` | Queries validator status. | Read-only. |
+| `2f` | Previews account balance and target validator, then submits `tx staking delegate` only after explicit confirmation. | On-chain transaction. |
+| `3a` | Restarts the Testnet 2 service. | Short downtime. |
+| `3b` | Stops the service. | Node offline until restarted. |
+| `3c` | Creates a mode-600 signer/state backup, then deletes the exact managed Testnet 2 home only after safety checks and typed confirmation. | Destructive. |
+| `3d` | Creates a mode-600 point-in-time signer/state archive without deleting the home. It is not an authoritative recovery snapshot; never restore its `priv_validator_state.json` after the node signs again. | Sensitive backup artifact. |
+| `4` | Shows official source links, pre-genesis checksum, local ports, and explicit UNKNOWN final metadata. | Read-only. |
+| `5` | Shows safety and Testnet 1 separation guidance. | Read-only. |
+| `6` | Exits. | None. |
 
-### 2. Validator / Key Interactions
+## Genesis ceremony flow
 
-| Option | Behaviour | Risk |
-|---|---|---|
-| `2a` | Lists keys or creates/recovers a key through `worrelld keys` in text mode. Create/recover output stays visible until you press Enter, so the one-time mnemonic is not cleared by the menu redraw. Recovery does not print the supplied mnemonic back. | Sensitive local key operation. |
-| `2b` | Shows the consensus public key for validator creation. | Read-only. |
-| `2c` | Prompts for validator moniker and metadata, including editable `details`, then builds a temporary validator JSON and submits `tx staking create-validator` only after explicit confirmation. | On-chain transaction. |
-| `2d` | Submits `tx slashing unjail` after explicit confirmation. | On-chain transaction. |
-| `2e` | Queries a validator's staking record. | Read-only. |
-| `2f` | Requires a reachable, synced local RPC; verifies the local key and `worrellvaloper1...` validator address; previews the account balance and validator record; then submits `tx staking delegate` only after explicit confirmation. The amount must be a positive integer with exactly one `uworrell` suffix. | On-chain transaction. |
+### Pre-genesis
 
-After an operation finishes, Valley keeps its output visible and waits for `Press Enter to go back to main menu...` before redrawing the menu. This applies to installation, updates, snapshots, Cosmovisor actions, validator transactions, delegation, service controls, and key backups. The menu redraw may clear the terminal only after that acknowledgement. The menu does not automate faucet requests or choose a Grand Valley validator. Delegation is operator-directed through `2f`; no default validator or delegation endpoint is selected.
+`1i` -> `1` downloads:
 
-### 3. Node Management
-
-| Option | Behaviour | Risk |
-|---|---|---|
-| `3a` | Restarts the selected systemd service. | Short downtime. |
-| `3b` | Stops the selected systemd service. | Node offline until restarted. |
-| `3c` | Stops and verifies the service, creates a verified mode-600 signer backup containing `priv_validator_key.json`, `priv_validator_state.json`, optional `node_key.json`, and checksums, then deletes the exact managed node home after typed confirmation. Supports the normal-user home and root-only `/var/lib/worrell` home. | Destructive. Refuses deletion if path, service, state, or backup checks fail. |
-| `3d` | Creates a mode-600 point-in-time signer/state archive without deleting the node home. It is not an authoritative recovery snapshot: never restore its `priv_validator_state.json` after the node signs again. Stop the node and capture fresh state for signer recovery or migration. | Sensitive backup artifact. |
-
-### 4. Endpoints
-
-Prints Worrell links, the live Grand Valley RPC/WebSocket/P2P endpoints, network-registry RPC candidates, explorer candidates, faucet endpoint, and Grand Valley links. The live RPC is verified separately from community endpoint availability.
-
-### 5. Guidelines
-
-Shows navigation, key safety, port, backup, and validator reminders.
-
-### 6. Exit
-
-Leaves the menu. For a normal node user, the installer keeps the canonical `$HOME/go/bin` entry in `~/.bash_profile` idempotently and writes controlled runtime settings to `$WORRELL_HOME/.worrell.env`. In root-only mode it uses `/usr/local/bin`, `/var/lib/worrell`, and the controlled env file without modifying `/root/.bash_profile`. Run `source ~/.bash_profile` only for the normal-user mode.
-
-## Recommended first-time flow
-
-1. Review the installer and release checksum source.
-2. Run `1a` as a dedicated node OS user. A root-only RPC host is also supported: the installer creates the dedicated `worrell` service account automatically.
-3. Choose a two-digit port prefix from `10` through `64` if the default ports are occupied. The live Grand Valley deployment uses prefix `17`: P2P/RPC/ABCI `17656/17657/17658`, REST/gRPC/gRPC-Web `17317/17090/17091`, and Prometheus `17660`.
-4. Choose pruning when prompted: blank/`p` uses custom pruning with keep recent `100` and interval `20`; `a` uses archive mode and retains application-state history.
-5. Choose the install runtime: blank/`no` keeps the direct `worrelld` systemd service; `yes` installs pinned Cosmovisor with automatic downloads disabled. You can migrate a direct node later through `1g`; root-only installs support the same lifecycle under `/var/lib/worrell`.
-6. Wait for `catching_up: false` in `1c`.
-7. Use the official faucet manually if testnet funds are needed.
-8. Create a validator only after checking the consensus key, balance, amount, commission, minimum self-delegation, and metadata/details.
-9. For delegation, wait for local `catching_up: false`, then use `2f` and review the key balance and validator record before confirming.
-10. Monitor logs and signing information continuously.
-
-## Pruning
-
-During `1a`, choose `p`/blank for pruned mode or `a` for archive mode. Pruned mode writes:
-
-```toml
-pruning = "custom"
-pruning-keep-recent = "100"
-pruning-interval = "20"
+```
+https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-2/pre-genesis.json
 ```
 
-Archive mode writes `pruning = "nothing"` plus zero custom values, retaining application-state history and requiring substantially more disk space. Re-running `1a` is a redeployment: the old node home is moved to a timestamped backup, so changing modes does not restore history already deleted by a previous pruned database. Pruning is independent of direct/Cosmovisor runtime and is not changed by `1g` migration.
+and verifies:
 
-## Apply snapshot
-
-Select `1h` -> provider -> `Pruned`. Current verified providers are ITRocket (live `.current_state.json` metadata resolves the rotating archive filename) and Sychonix (concrete `worrell-snapshot.tar.lz4`). Archive snapshots are not advertised until a provider publishes a verified archive. The helper validates LZ4, archive paths, top-level `data/` layout, minimum size, and service restart before replacing only `data/`; it preserves `config/` and the current `priv_validator_state.json`. Type `APPLY-WORRELL-SNAPSHOT` only after reviewing the provider, height, size, and URL.
-
-Snapshot providers may publish pruned state only. Changing `app.toml` to archive cannot recreate historical state deleted by a pruned snapshot.
-
-## Cosmovisor
-
-Worrell's application wires the Cosmos SDK `x/upgrade` module, so the node can be run through Cosmovisor. During `1a`, choose the runtime explicitly: blank/`no` (the default) installs a direct `worrelld` service; `yes` installs and initialises pinned Cosmovisor. Existing direct-binary nodes can use `1g` -> **Migrate current node to Cosmovisor**.
-
-Cosmovisor is optional at install time. Selecting direct mode does not uninstall an existing Cosmovisor binary, and selecting Cosmovisor does not enable automatic downloads. The current live release remains `v0.1.2`. For proposal #3, use **Stage a verified upgrade binary** -> `v0.1.3`; Valley supplies the exact governance plan name `v0.1.3` and stages without a local `--upgrade-height` because the chain plan supplies block `1186000`. A custom release path remains available for separately coordinated upgrades. Staging does not activate the binary or restart the service. The migration does not delete `data/upgrade-info.json` or node data.
-
-Use **Verify staged or completed handoff** after staging and again after the planned height or recovery. The preflight check confirms the staged executable/version and that `current` has not moved early. The post-upgrade check confirms the exact `upgrade-info.json` plan/height, `current -> upgrades/<name>`, executable version, active service, and that `NRestarts` stays stable during a short observation window. It fails closed and never deletes `data/upgrade-info.json`; a stale `current` is an incomplete hand-off, not a successful upgrade. Set `WORRELL_COSMOVISOR_STABILITY_SECONDS` only to adjust that read-only observation window.
-
-Cosmovisor state is stored under `~/.worrell/cosmovisor/`:
-
-```text
-current -> genesis (or upgrades/<upgrade-name>)
-genesis/bin/worrelld
-upgrades/<upgrade-name>/bin/worrelld
-backup/
+```
+f5231dc924c762bdbe5aa0605ed6472288c9b71f4b175015e0559edccdd96b94
 ```
 
-For validator-capable installation and migration, `UNSAFE_SKIP_BACKUP=false` is the default. A lightnode/non-validator operator must explicitly set `WORRELL_UNSAFE_SKIP_BACKUP=true` to opt out; explicit existing values are not silently changed. Emergency height-based staging may create a matching `upgrade-info.json`; the verifier accepts that marker only when the supplied height and plan match exactly.
+The file is installed at $WORRELL_HOME/config/genesis.json. Existing files are backed up before replacement. The helper checks `chain_id` and does not start the service.
+
+### Gentx preview and confirmation
+
+Before `1i` -> `2`, initialise the separate home, create the operator key, and add the official allocation to the local pre-genesis as described by upstream. The Valley helper does not create keys, print mnemonics, or submit pull requests.
+
+The preview uses the official ceremony parameters: chain ID `worrell-testnet-2`, denomination `uworrell`, self-delegation between `1000000uworrell` and `500000000uworrell`, default suggested self-delegation `495000000uworrell`, minimum commission `0.05`, maximum commission `0.20`, maximum daily change `0.01`, minimum self-delegation `1000000`, and the operator's public IP/port memo. It runs nothing until you type `CREATE-GENTX`.
+
+Review `config/gentx/gentx-*.json` and submit it to the official network repository yourself. One gentx per operator account is expected by upstream.
+
+### Final genesis
+
+After the coordinator publishes final `genesis.json`, its exact SHA-256, and the persistent peers, use `1i` -> `3`. Enter the 64-character checksum and comma-separated peers. The helper fetches the URL, verifies the checksum and `chain_id`, previews the changes, requires `APPLY-FINAL-GENESIS`, updates only `[p2p] persistent_peers`, installs the final file, and runs `worrelld genesis validate-genesis`.
+
+The Valley does not guess a final checksum, peers, faucet, RPC, or `genesis_time`. Start the service only at the published `genesis_time` and never reuse Testnet 1 signer material.
+
+## First-time flow
+
+1. Review the installer, helper scripts, and official ceremony README.
+2. Run `1a`; keep the service stopped with verified pre-genesis.
+3. Use `1i` to verify pre-genesis and prepare the gentx preview.
+4. Create the operator account and add the upstream allocation to the local genesis.
+5. Confirm the gentx only after reviewing every field; submit it manually upstream.
+6. When final metadata is published, apply it with `1i` and verify the local genesis.
+7. Start at the published `genesis_time`, then wait for `catching_up=false` before validator transactions.
+8. Keep Testnet 1's `~/.worrell`, service, ports, and signer untouched until 24 November 2026.
 
 ## Safety
 
-- Use testnet-only keys and keep mnemonics offline. When creating a key through `2a`, copy the mnemonic before pressing Enter; the binary displays it only once and the Valley does not save or upload it.
-- Never run two nodes with the same validator signing key.
-- Do not expose RPC, REST, gRPC, or Prometheus publicly unless you understand the security impact.
-- The menu offers guarded pruned snapshot application from reviewed providers; archive snapshots remain disabled until a provider is verified.
-- `create-validator`, delegation, and `unjail` are real transactions. Review the complete preview, including validator details and the exact `uworrell` amount, before confirming.
-- Delegation uses Cosmos SDK `tx staking delegate`; there is no separate `stake` command. The menu rejects bare amounts, decimals, duplicate suffixes, and non-positive values.
-- The public endpoint list comes from upstream network metadata and may change.
+- Keep Testnet 1 and Testnet 2 homes, services, ports, and signing keys separate.
+- Never put a mnemonic or private key in a script, URL, issue, or chat.
+- Keep RPC, REST, gRPC, gRPC-Web, and Prometheus private unless protected.
+- `create-validator`, delegation, and `unjail` are real transactions. Review the full preview before confirming.
+- Never start two nodes with the same consensus signing key.
+- A final-genesis checksum mismatch is a hard stop; download again from the official metadata and do not edit the file.
+
+## Official sources
+
+- [Worrell v0.2.0 release](https://github.com/worrellchain/worrell/releases/tag/v0.2.0)
+- [Worrell node runbook](https://github.com/worrellchain/worrell/blob/main/docs/RUNNING-A-NODE.md)
+- [Testnet 2 ceremony README](https://github.com/worrellchain/networks/blob/main/worrell-testnet-2/README.md)
+- [Testnet 2 metadata](https://github.com/worrellchain/networks/tree/main/worrell-testnet-2)
 
 last updated by: John

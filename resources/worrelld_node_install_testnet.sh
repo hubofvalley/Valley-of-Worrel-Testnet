@@ -9,24 +9,24 @@ source "$HOME/.bash_profile" 2>/dev/null || true
 set -u
 export PATH="$HOME/go/bin:/usr/local/bin:$PATH"
 
-readonly WORRELL_VERSION="${WORRELL_TARGET_VERSION:-v0.1.2}"
-readonly CHAIN_ID="worrell-testnet-1"
+readonly WORRELL_VERSION="${WORRELL_TARGET_VERSION:-v0.2.0}"
+readonly CHAIN_ID="worrell-testnet-2"
 ROOT_MODE=no
 SERVICE_USER="${WORRELL_SERVICE_USER:-${USER:-$(id -un)}}"
 if [ "${EUID:-$(id -u)}" -eq 0 ]; then
     ROOT_MODE=yes
-    SERVICE_USER="${WORRELL_SERVICE_USER:-worrell}"
+    SERVICE_USER="${WORRELL_SERVICE_USER:-worrell-testnet-2}"
     HOME_DIR="${WORRELL_HOME:-/var/lib/$SERVICE_USER}"
     BINARY_DIR="${WORRELL_BINARY_DIR:-/usr/local/bin}"
 else
-    HOME_DIR="${WORRELL_HOME:-$HOME/.worrell}"
+    HOME_DIR="${WORRELL_HOME:-$HOME/.worrell-testnet-2}"
     BINARY_DIR="${WORRELL_BINARY_DIR:-$HOME/go/bin}"
 fi
 SERVICE_GROUP="${WORRELL_SERVICE_GROUP:-$SERVICE_USER}"
 if [ "$ROOT_MODE" = yes ]; then
-    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+    WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env
 else
-    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell.env}"
+    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell-testnet-2.env}"
 fi
 readonly COSMOVISOR_VERSION="${WORRELL_COSMOVISOR_VERSION:-v1.7.3}"
 COSMOVISOR_BIN="$BINARY_DIR/cosmovisor"
@@ -38,9 +38,9 @@ case "$WORRELL_UNSAFE_SKIP_BACKUP" in
     true|false) ;;
     *) echo -e "${RED}WORRELL_UNSAFE_SKIP_BACKUP must be true or false.${RESET}" >&2; exit 1 ;;
 esac
-readonly GENESIS_URL="https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-1/genesis.json"
-readonly GENESIS_SHA256="a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd"
-readonly PEERS="bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656"
+readonly GENESIS_URL="https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-2/pre-genesis.json"
+readonly GENESIS_SHA256="f5231dc924c762bdbe5aa0605ed6472288c9b71f4b175015e0559edccdd96b94"
+readonly PEERS=""
 
 PRUNING_MODE=pruned
 PRUNING_MODE_ARG_SET=no
@@ -85,7 +85,7 @@ valid_service() { [[ "$1" =~ ^[A-Za-z0-9_.@-]+$ ]]; }
 write_runtime_env() {
     local env_file="$WORRELL_ENV_FILE"
     if [ "$ROOT_MODE" = yes ]; then
-        install -d -m 0755 /etc/worrelld
+        install -d -m 0755 /etc/worrelld-testnet-2
         install -m 0644 /dev/null "$env_file"
     else
         install -d -m 0750 "$HOME_DIR"
@@ -263,10 +263,10 @@ install_prebuilt() {
         cd "$workdir"
         grep -E "[[:space:]]${artifact//./\\.}$" release_checksum | sha256sum -c -
     )
-    if [ "$WORRELL_VERSION" = "v0.1.2" ]; then
+    if [ "$WORRELL_VERSION" = "v0.2.0" ]; then
         case "$artifact" in
-            v0.1.2_linux_amd64.tar.gz) echo "1542bc561227ecd6bfb2d35f3bc81b8fd34e6f6db1404923b5bf5bd4b8303cd2  $workdir/$artifact" | sha256sum -c - ;;
-            v0.1.2_linux_arm64.tar.gz) echo "3d4a9ffc754c39400c31af6599d030c2652914094a772f38e7a8284aafc7f58f  $workdir/$artifact" | sha256sum -c - ;;
+            v0.2.0_linux_amd64.tar.gz) echo "1ccccd39d57467236a2f64ee4809fee4de3cc3f1bc02c47e3e22aa9c6b414c76  $workdir/$artifact" | sha256sum -c - ;;
+            v0.2.0_linux_arm64.tar.gz) echo "e4ad1e1bef4aa4656d03a543076d4cc08f91114a1cf93454218063f05992fb52  $workdir/$artifact" | sha256sum -c - ;;
         esac
     fi
     tar -xzf "$workdir/$artifact" -C "$workdir"
@@ -328,14 +328,14 @@ fi
 read -r -p "Enter node moniker [grandvalley-lightnode]: " MONIKER
 MONIKER=${MONIKER:-grandvalley-lightnode}
 while true; do
-    PORT_PREFIX=$(prompt_default 'Enter two-digit port prefix (17 uses P2P/RPC 17656/17657; API/gRPC become 17317/17090)' '17')
+    PORT_PREFIX=$(prompt_default 'Enter two-digit port prefix (18 uses P2P/RPC 18656/18657; API/gRPC become 18317/18090)' '18')
     valid_prefix "$PORT_PREFIX" && break
-    echo -e "${RED}Use exactly two digits, for example 17 or 38.${RESET}"
+    echo -e "${RED}Use exactly two digits, for example 18 or 38.${RESET}"
 done
 WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-}
 while [ -z "$WORRELL_SERVICE_NAME" ]; do
-    read -r -p "Enter service name [worrelld]: " WORRELL_SERVICE_NAME
-    WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld}
+    read -r -p "Enter service name [worrelld-testnet-2]: " WORRELL_SERVICE_NAME
+    WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld-testnet-2}
     valid_service "$WORRELL_SERVICE_NAME" || { echo -e "${RED}Invalid service name.${RESET}"; WORRELL_SERVICE_NAME=""; }
 done
 read -r -p "Enable UFW and allow P2P port ${PORT_PREFIX}656? (yes/no) [no]: " ENABLE_UFW
@@ -352,7 +352,7 @@ if [ "$ROOT_MODE" = yes ]; then
     esac
 else
     case "$HOME_DIR" in
-        "$HOME/.worrell"|"$HOME"/*) ;;
+        "$HOME/.worrell-testnet-2"|"$HOME"/*) ;;
         *) echo -e "${RED}Refusing node home outside the current user's home: $HOME_DIR${RESET}" >&2; exit 1 ;;
     esac
 fi
@@ -365,8 +365,8 @@ sudo systemctl disable "$WORRELL_SERVICE_NAME" 2>/dev/null || true
 sudo rm -f "/etc/systemd/system/${WORRELL_SERVICE_NAME}.service"
 
 if [ -d "$HOME_DIR" ]; then
-    backup="$HOME/.worrell-backups/$(date +%Y%m%d-%H%M%S)"
-    mkdir -p "$HOME/.worrell-backups"
+    backup="$HOME/.worrell-testnet-2-backups/$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$HOME/.worrell-testnet-2-backups"
     mv "$HOME_DIR" "$backup"
     echo -e "${YELLOW}Existing node home moved to $backup${RESET}"
 fi
@@ -437,13 +437,9 @@ fi
 write_runtime_env
 save_env
 sudo systemctl daemon-reload
-sudo systemctl enable --now "$WORRELL_SERVICE_NAME"
-if sudo systemctl is-active --quiet "$WORRELL_SERVICE_NAME"; then
-    echo -e "${GREEN}Worrell node installed and service is active.${RESET}"
-else
-    echo -e "${RED}Service did not become active. Inspect: sudo journalctl -u ${WORRELL_SERVICE_NAME} -n 100 --no-pager${RESET}" >&2
-    exit 1
-fi
+sudo systemctl enable "$WORRELL_SERVICE_NAME"
+echo -e "${GREEN}Worrell testnet-2 node installed with verified pre-genesis.${RESET}"
+echo -e "${YELLOW}The service remains stopped until final genesis and its published checksum/peers are applied through the genesis ceremony.${RESET}"
 echo -e "${CYAN}Service user:${RESET} $SERVICE_USER"
 echo -e "${CYAN}Home:${RESET} $HOME_DIR"
 echo -e "${CYAN}Pruning:${RESET} $PRUNING_MODE"

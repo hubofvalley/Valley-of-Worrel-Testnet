@@ -8,11 +8,11 @@ trap 'rm -rf "$fixture"' EXIT
 
 awk '/^echo -e "\$LOGO"/{exit} {print}' "$menu" > "$fixture/functions.sh"
 
-HOME="$fixture" WORRELL_HOME="$fixture/.worrell" CALLS="$fixture/calls" bash -c '
+HOME="$fixture" WORRELL_HOME="$fixture/.worrell-testnet-2" CALLS="$fixture/calls" bash -c '
   source "$HOME/functions.sh"
   : > "$CALLS"
   local_status() {
-    printf "%s\n" '\''{"result":{"node_info":{"network":"worrell-testnet-1"},"sync_info":{"catching_up":false}}}'\''
+    printf "%s\n" '\''{"result":{"node_info":{"network":"worrell-testnet-2"},"sync_info":{"catching_up":false}}}'\''
   }
   get_local_rpc_port() { printf "%s\n" 26657; }
   EVENTS="$HOME/events"
@@ -60,7 +60,7 @@ HOME="$fixture" WORRELL_HOME="$fixture/.worrell" CALLS="$fixture/calls" bash -c 
   # A failed local RPC gate must stop before key, balance, validator, or tx calls.
   : > "$CALLS"
   local_status() {
-    printf "%s\n" '\''{"result":{"node_info":{"network":"worrell-testnet-1"},"sync_info":{"catching_up":true}}}'\''
+    printf "%s\n" '\''{"result":{"node_info":{"network":"worrell-testnet-2"},"sync_info":{"catching_up":true}}}'\''
   }
   printf "key-name\n%s\n1000000uworrell\nyes\n" "$validator" | delegate_to_validator > "$HOME/unsynced.out"
   grep -q "not confirmed synced" "$HOME/unsynced.out"
@@ -77,7 +77,7 @@ HOME="$fixture" WORRELL_HOME="$fixture/.worrell" CALLS="$fixture/calls" bash -c 
 
   # A key lookup failure must also stop before any preview or transaction.
   local_status() {
-    printf "%s\n" '\''{"result":{"node_info":{"network":"worrell-testnet-1"},"sync_info":{"catching_up":false}}}'\''
+    printf "%s\n" '\''{"result":{"node_info":{"network":"worrell-testnet-2"},"sync_info":{"catching_up":false}}}'\''
   }
   worrell() {
     printf "%s\n" "$*" >> "$CALLS"

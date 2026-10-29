@@ -19,7 +19,7 @@ assert lines[explanation + 2].startswith('    read -r -p "Validator website []: 
 assert lines[explanation + 3].startswith('    read -r -p "Validator security email []: "')
 PY
 
-HOME="$fixture" WORRELL_HOME="$fixture/.worrell" bash -c '
+HOME="$fixture" WORRELL_HOME="$fixture/.worrell-testnet-2" bash -c '
   source "$HOME/functions.sh"
   local_catching_up() { printf "%s\n" false; }
   get_local_rpc_port() { printf "%s\n" 26657; }

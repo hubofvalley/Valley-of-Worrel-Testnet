@@ -12,11 +12,11 @@
       "id": "validator",
       "kind": "cosmos",
       "binary": "worrelld",
-      "service": "worrelld.service",
-      "home": "$HOME/.worrell (or /var/lib/worrell in root-only mode)",
+      "service": "worrelld-testnet-2.service",
+      "home": "$HOME/.worrell-testnet-2 (or /var/lib/worrell-testnet-2 in root-only mode)",
       "config_paths": [
-        "$HOME/.worrell/config/config.toml",
-        "$HOME/.worrell/config/app.toml"
+        "$HOME/.worrell-testnet-2/config/config.toml",
+        "$HOME/.worrell-testnet-2/config/app.toml"
       ],
       "dependencies": [],
       "capabilities": [
@@ -30,6 +30,7 @@
         "staking_tx",
         "snapshot",
         "pruning",
+        "genesis_ceremony",
         "cosmovisor",
         "cosmovisor_handoff_verification",
         "backup",
@@ -38,37 +39,37 @@
       "ports": [
         {
           "role": "p2p",
-          "default": 17656,
+          "default": 18656,
           "exposure": "public"
         },
         {
           "role": "rpc",
-          "default": 17657,
+          "default": 18657,
           "exposure": "loopback"
         },
         {
           "role": "abci",
-          "default": 17658,
+          "default": 18658,
           "exposure": "loopback"
         },
         {
           "role": "prometheus",
-          "default": 17660,
+          "default": 18660,
           "exposure": "loopback"
         },
         {
           "role": "api",
-          "default": 17317,
+          "default": 18317,
           "exposure": "loopback"
         },
         {
           "role": "grpc",
-          "default": 17090,
+          "default": 18090,
           "exposure": "loopback"
         },
         {
           "role": "grpc-web",
-          "default": 17091,
+          "default": 18091,
           "exposure": "loopback"
         }
       ]
@@ -79,22 +80,23 @@
     "unsafe_skip_backup_default": false
   },
   "live_deployment": {
-    "verified_date": "2026-09-11",
-    "port_prefix": 17,
+    "verification_status": "not_yet_live",
+    "verified_date": null,
+    "port_prefix": 18,
     "ports": {
-      "p2p": 17656,
-      "rpc": 17657,
-      "abci": 17658,
-      "prometheus": 17660,
-      "api": 17317,
-      "grpc": 17090,
-      "grpc-web": 17091
+      "p2p": 18656,
+      "rpc": 18657,
+      "abci": 18658,
+      "prometheus": 18660,
+      "api": 18317,
+      "grpc": 18090,
+      "grpc-web": 18091
     },
-    "moniker": "grandvalley-lightnode",
-    "public_rpc": "https://lightnode-rpc-worrell.grandvalleys.com",
-    "public_websocket": "wss://lightnode-rpc-worrell.grandvalleys.com/websocket",
-    "public_peer": "e812f08760b18ed774369e899763735f80179f76@peer-worrell.grandvalleys.com:17656",
-    "cosmovisor": true,
-    "unsafe_skip_backup": true
+    "moniker": null,
+    "public_rpc": null,
+    "public_websocket": null,
+    "public_peer": null,
+    "cosmovisor": null,
+    "unsafe_skip_backup": false
   }
 }

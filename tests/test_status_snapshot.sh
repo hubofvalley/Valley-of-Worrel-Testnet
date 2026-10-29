@@ -26,7 +26,7 @@ grep -q 'signer_state_at_least' "$snapshot"
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
 awk '/^echo -e "\$LOGO"/{exit} {print}' "$menu" > "$fixture/functions.sh"
-HOME="$fixture" WORRELL_HOME="$fixture/.worrell" bash -c '
+HOME="$fixture" WORRELL_HOME="$fixture/.worrell-testnet-2" bash -c '
   source "$HOME/functions.sh"
   local_status() { printf "%s\\n" '\''{"result":{"sync_info":{"catching_up":false}}}'\''; }
   test "$(local_catching_up)" = false
@@ -85,7 +85,7 @@ printf 'laddr = "tcp://127.0.0.1:26657"\n' > "$rollback_fixture/home/config/conf
 printf '{"height":"11","round":0,"step":3}\n' > "$rollback_fixture/home/data/priv_validator_state.json"
 printf '{"height":"10","round":0,"step":3}\n' > "$rollback_fixture/rollback/priv_validator_state.json"
 printf active > "$rollback_fixture/service-state"
-STATE12='{"height":"12","round":0,"step":3}' RPC12='{"result":{"node_info":{"network":"worrell-testnet-1"},"sync_info":{"latest_block_height":"12"}}}' HOME="$rollback_fixture" WORRELL_HOME="$rollback_fixture/home" WORRELL_SERVICE_NAME=worrelld bash -c '
+STATE12='{"height":"12","round":0,"step":3}' RPC12='{"result":{"node_info":{"network":"worrell-testnet-2"},"sync_info":{"latest_block_height":"12"}}}' HOME="$rollback_fixture" WORRELL_HOME="$rollback_fixture/home" WORRELL_SERVICE_NAME=worrelld bash -c '
   source "$1"
   sudo() {
     case "$2" in

@@ -9,21 +9,21 @@ export PATH="$HOME/go/bin:/usr/local/bin:$PATH"
 
 ROOT_MODE=no
 if [ "${EUID:-$(id -u)}" -eq 0 ]; then ROOT_MODE=yes; fi
-HOME_DIR="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell}" || printf '%s' "$HOME/.worrell")}"
+HOME_DIR="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell-testnet-2}" || printf '%s' "$HOME/.worrell-testnet-2")}"
 if [ "$ROOT_MODE" = yes ]; then
-    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+    WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env
 else
-    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell.env}"
+    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell-testnet-2.env}"
 fi
 if [ -r "$WORRELL_ENV_FILE" ]; then
     # shellcheck disable=SC1090
     source "$WORRELL_ENV_FILE"
 fi
-SERVICE="${WORRELL_SERVICE_NAME:-worrelld}"
-SERVICE_USER="${WORRELL_SERVICE_USER:-$([ "$ROOT_MODE" = yes ] && printf worrell || id -un)}"
+SERVICE="${WORRELL_SERVICE_NAME:-worrelld-testnet-2}"
+SERVICE_USER="${WORRELL_SERVICE_USER:-$([ "$ROOT_MODE" = yes ] && printf worrell-testnet-2 || id -un)}"
 SERVICE_GROUP="${WORRELL_SERVICE_GROUP:-$SERVICE_USER}"
 BINARY_DIR="${WORRELL_BINARY_DIR:-$([ "$ROOT_MODE" = yes ] && printf '/usr/local/bin' || printf '%s' "$HOME/go/bin")}"
-readonly CHAIN_ID="${WORRELL_CHAIN_ID:-worrell-testnet-1}"
+readonly CHAIN_ID="${WORRELL_CHAIN_ID:-worrell-testnet-2}"
 readonly COSMOVISOR_VERSION="${WORRELL_COSMOVISOR_VERSION:-v1.7.3}"
 COSMOVISOR_BIN="$BINARY_DIR/cosmovisor"
 readonly SYSTEMD_UNIT_DIR="${WORRELL_SYSTEMD_UNIT_DIR:-/etc/systemd/system}"
@@ -39,7 +39,7 @@ esac
 if [ "$ROOT_MODE" = yes ]; then
     case "$HOME_DIR" in /var/lib/$SERVICE_USER|/var/lib/$SERVICE_USER/*) ;; *) echo -e "${RED}Refusing root-mode node home outside /var/lib/$SERVICE_USER: $HOME_DIR${RESET}" >&2; exit 1 ;; esac
 else
-    case "$HOME_DIR" in "$HOME/.worrell"|"$HOME"/*) ;; *) echo -e "${RED}Refusing node home outside the current user's home: $HOME_DIR${RESET}" >&2; exit 1 ;; esac
+    case "$HOME_DIR" in "$HOME/.worrell-testnet-2"|"$HOME"/*) ;; *) echo -e "${RED}Refusing node home outside the current user's home: $HOME_DIR${RESET}" >&2; exit 1 ;; esac
     [ "$(stat -c %u "$HOME_DIR")" = "$(id -u)" ] || { echo -e "${RED}Node home must be owned by the current user: $HOME_DIR${RESET}" >&2; exit 1; }
 fi
 [ ! -e "$HOME_DIR/data/upgrade-info.json" ] || { echo -e "${RED}Pending data/upgrade-info.json found; review/stage the matching upgrade before migration.${RESET}" >&2; exit 1; }
@@ -73,7 +73,7 @@ autostart=no
 if sudo systemctl is-active --quiet "$SERVICE"; then was_active=yes; fi
 if sudo systemctl is-enabled --quiet "$SERVICE"; then autostart=yes; fi
 unit="$SYSTEMD_UNIT_DIR/${SERVICE}.service"
-backup="$HOME/.worrell-backups/cosmovisor-service-$(date +%Y%m%d-%H%M%S).service"
+backup="$HOME/.worrell-testnet-2-backups/cosmovisor-service-$(date +%Y%m%d-%H%M%S).service"
 profile="$HOME/.bash_profile"
 profile_backup="${backup%.service}.bash_profile"
 mkdir -p "${backup%/*}"

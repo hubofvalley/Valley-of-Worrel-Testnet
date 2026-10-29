@@ -17,18 +17,18 @@ if [ "${EUID:-$(id -u)}" -eq 0 ]; then ROOT_MODE=yes; fi
 readonly ITROCKET_META_URL="https://server-3.itrocket.net/testnet/worrell/.current_state.json"
 readonly ITROCKET_BASE_URL="https://server-3.itrocket.net/testnet/worrell"
 readonly SYCHONIX_SNAPSHOT_URL="https://snapshot.sychonix.com/testnet/worrell/worrell-snapshot.tar.lz4"
-WORRELL_HOME="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell}" || printf '%s' "$HOME/.worrell")}"
+WORRELL_HOME="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell-testnet-2}" || printf '%s' "$HOME/.worrell-testnet-2")}"
 if [ "$ROOT_MODE" = yes ]; then
-    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+    WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env
 else
-    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell.env}"
+    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell-testnet-2.env}"
 fi
 if [ -r "$WORRELL_ENV_FILE" ]; then
     # shellcheck disable=SC1090
     source "$WORRELL_ENV_FILE"
 fi
-WORRELL_SERVICE_NAME="${WORRELL_SERVICE_NAME:-worrelld}"
-WORRELL_SERVICE_USER="${WORRELL_SERVICE_USER:-$([ "$ROOT_MODE" = yes ] && printf worrell || id -un)}"
+WORRELL_SERVICE_NAME="${WORRELL_SERVICE_NAME:-worrelld-testnet-2}"
+WORRELL_SERVICE_USER="${WORRELL_SERVICE_USER:-$([ "$ROOT_MODE" = yes ] && printf worrell-testnet-2 || id -un)}"
 WORRELL_SERVICE_GROUP="${WORRELL_SERVICE_GROUP:-$WORRELL_SERVICE_USER}"
 if [ "$ROOT_MODE" = yes ]; then sudo() { "$@"; }; fi
 
@@ -36,7 +36,7 @@ prompt_back_or_continue() { read -r -p "Press Enter to continue..."; }
 
 require_local_node() {
     [ -f "$WORRELL_HOME/config/genesis.json" ] || { echo -e "${RED}Worrell config not found. Install the node first.${RESET}" >&2; return 1; }
-    jq -e '.chain_id == "worrell-testnet-1"' "$WORRELL_HOME/config/genesis.json" >/dev/null || { echo -e "${RED}Local genesis is not worrell-testnet-1. Refusing snapshot application.${RESET}" >&2; return 1; }
+    jq -e '.chain_id == "worrell-testnet-2"' "$WORRELL_HOME/config/genesis.json" >/dev/null || { echo -e "${RED}Local genesis is not worrell-testnet-2. Refusing snapshot application.${RESET}" >&2; return 1; }
     [ -d "$WORRELL_HOME/data" ] || { echo -e "${RED}Worrell data directory not found. Install and sync the node first.${RESET}" >&2; return 1; }
     [ -f "$WORRELL_HOME/data/priv_validator_state.json" ] || { echo -e "${RED}Validator state file not found. Refusing snapshot application.${RESET}" >&2; return 1; }
     [ ! -e "$WORRELL_HOME/data/upgrade-info.json" ] || { echo -e "${RED}Pending upgrade-info.json exists. Resolve the pending upgrade before applying a snapshot.${RESET}" >&2; return 1; }
@@ -217,11 +217,11 @@ rollback_snapshot() {
 wait_for_healthy_service() {
     local port attempt response
     port=$(awk -F: '/^[[:space:]]*laddr[[:space:]]*=.*127\.0\.0\.1:/ {gsub(/".*/, "", $3); print $3; exit}' "$WORRELL_HOME/config/config.toml")
-    port=${port:-17657}
+    port=${port:-18657}
     for attempt in 1 2 3 4 5; do
         sudo systemctl is-active --quiet "$WORRELL_SERVICE_NAME" || return 1
         response=$(curl -fsS --connect-timeout 2 --max-time 5 "http://127.0.0.1:${port}/status" 2>/dev/null || true)
-        if jq -e '.result.node_info.network == "worrell-testnet-1" and (.result.sync_info.latest_block_height | tonumber) >= 1' >/dev/null 2>&1 <<< "$response"; then
+        if jq -e '.result.node_info.network == "worrell-testnet-2" and (.result.sync_info.latest_block_height | tonumber) >= 1' >/dev/null 2>&1 <<< "$response"; then
             return 0
         fi
         sleep 3

@@ -9,7 +9,7 @@ trap 'rm -rf "$fixture"' EXIT
 # Load menu functions without entering the interactive launcher.
 awk '/^echo -e "\$LOGO"/{exit} {print}' "$menu" > "$fixture/functions.sh"
 
-HOME="$fixture" WORRELL_HOME="$fixture/.worrell" EVENTS="$fixture/events" CALLS="$fixture/calls" bash -c '
+HOME="$fixture" WORRELL_HOME="$fixture/.worrell-testnet-2" EVENTS="$fixture/events" CALLS="$fixture/calls" bash -c '
   source "$HOME/functions.sh"
   worrell_bin() { return 0; }
   worrell() {

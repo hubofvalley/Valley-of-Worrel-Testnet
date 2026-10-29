@@ -12,18 +12,18 @@ UPGRADE_NAME="${2:-}"
 UPGRADE_HEIGHT="${3:-}"
 ROOT_MODE=no
 if [ "${EUID:-$(id -u)}" -eq 0 ]; then ROOT_MODE=yes; fi
-HOME_DIR="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell}" || printf '%s' "$HOME/.worrell")}"
+HOME_DIR="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell-testnet-2}" || printf '%s' "$HOME/.worrell-testnet-2")}"
 if [ "$ROOT_MODE" = yes ]; then
-    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+    WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env
 else
-    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell.env}"
+    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell-testnet-2.env}"
 fi
 if [ -r "$WORRELL_ENV_FILE" ]; then
     # shellcheck disable=SC1090
     source "$WORRELL_ENV_FILE"
 fi
 BINARY_DIR="${WORRELL_BINARY_DIR:-$([ "$ROOT_MODE" = yes ] && printf '/usr/local/bin' || printf '%s' "$HOME/go/bin")}"
-readonly SERVICE="${WORRELL_SERVICE_NAME:-worrelld}"
+readonly SERVICE="${WORRELL_SERVICE_NAME:-worrelld-testnet-2}"
 readonly COSMOVISOR_BIN="${COSMOVISOR_BIN:-$BINARY_DIR/cosmovisor}"
 if [ "$ROOT_MODE" = yes ]; then sudo() { "$@"; }; fi
 WORRELL_UNSAFE_SKIP_BACKUP="${WORRELL_UNSAFE_SKIP_BACKUP:-false}"
@@ -57,9 +57,9 @@ PY2
 [ -x "$COSMOVISOR_BIN" ] || { echo -e "${RED}Cosmovisor is not installed.${RESET}" >&2; exit 1; }
 [ -d "$HOME_DIR/cosmovisor" ] || { echo -e "${RED}Cosmovisor is not initialized for $HOME_DIR.${RESET}" >&2; exit 1; }
 if [ "$ROOT_MODE" = yes ]; then
-    case "$HOME_DIR" in /var/lib/${WORRELL_SERVICE_USER:-worrell}|/var/lib/${WORRELL_SERVICE_USER:-worrell}/*) ;; *) echo -e "${RED}Refusing root-mode node home outside /var/lib/worrell.${RESET}" >&2; exit 1 ;; esac
+    case "$HOME_DIR" in /var/lib/${WORRELL_SERVICE_USER:-worrell-testnet-2}|/var/lib/${WORRELL_SERVICE_USER:-worrell-testnet-2}/*) ;; *) echo -e "${RED}Refusing root-mode node home outside /var/lib/worrell-testnet-2.${RESET}" >&2; exit 1 ;; esac
 fi
-[ -n "$VERSION" ] || read -r -p "Worrell release version (for example v0.1.2): " VERSION
+[ -n "$VERSION" ] || read -r -p "Worrell release version (for example v0.2.0): " VERSION
 [ -n "$UPGRADE_NAME" ] || read -r -p "On-chain upgrade name: " UPGRADE_NAME
 [[ "$VERSION" =~ ^v[0-9A-Za-z._-]+$ ]] || { echo -e "${RED}Invalid release version.${RESET}" >&2; exit 1; }
 valid_upgrade_name "$UPGRADE_NAME" || { echo -e "${RED}Upgrade name cannot be empty or contain a newline.${RESET}" >&2; exit 1; }
@@ -99,7 +99,7 @@ args=(add-upgrade "$UPGRADE_NAME" "$workdir/worrelld")
 [ -z "$UPGRADE_HEIGHT" ] || args+=(--upgrade-height "$UPGRADE_HEIGHT")
 "$COSMOVISOR_BIN" "${args[@]}"
 if [ "$ROOT_MODE" = yes ]; then
-    chown -R "${WORRELL_SERVICE_USER:-worrell}:${WORRELL_SERVICE_GROUP:-${WORRELL_SERVICE_USER:-worrell}}" "$HOME_DIR"
+    chown -R "${WORRELL_SERVICE_USER:-worrell-testnet-2}:${WORRELL_SERVICE_GROUP:-${WORRELL_SERVICE_USER:-worrell-testnet-2}}" "$HOME_DIR"
 fi
 
 echo -e "${GREEN}Cosmovisor upgrade binary staged successfully.${RESET}"
