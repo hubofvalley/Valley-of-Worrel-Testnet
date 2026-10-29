@@ -43,12 +43,12 @@ grep -q 'ROOT_MODE=yes' "$repo/resources/worrelld_update.sh"
 grep -q 'ROOT_MODE=yes' "$repo/resources/cosmovisor_migration.sh"
 grep -q 'ROOT_MODE=yes' "$repo/resources/worrelld_cosmovisor_upgrade.sh"
 grep -q 'fix_node_ownership()' "$repo/resources/apply_snapshot.sh"
-grep -q 'WORRELL_ENV_FILE=/etc/worrel-testnet-2/worrelld.env' "$installer"
+grep -q 'WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env' "$installer"
 grep -q 'install -m 0644 /dev/null "$env_file"' "$installer"
 grep -q 'chown root:root "$env_file"' "$installer"
 ! grep -q 'chown "$SERVICE_USER:$SERVICE_GROUP" "$env_file"' "$installer"
 for helper in "$repo/resources/worrelld_update.sh" "$repo/resources/cosmovisor_migration.sh" "$repo/resources/worrelld_cosmovisor_upgrade.sh" "$repo/resources/apply_snapshot.sh" "$repo/resources/valleyofWorrel.sh"; do
-    grep -q 'WORRELL_ENV_FILE=/etc/worrel-testnet-2/worrelld.env' "$helper"
+    grep -q 'WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env' "$helper"
 done
 python3 - "$repo/resources/apply_snapshot.sh" <<'PYROOT'
 from pathlib import Path

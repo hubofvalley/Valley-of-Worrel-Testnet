@@ -12,7 +12,7 @@
       "id": "validator",
       "kind": "cosmos",
       "binary": "worrelld",
-      "service": "worrel-testnet-2.service",
+      "service": "worrelld-testnet-2.service",
       "home": "$HOME/.worrell-testnet-2 (or /var/lib/worrell-testnet-2 in root-only mode)",
       "config_paths": [
         "$HOME/.worrell-testnet-2/config/config.toml",

@@ -21,7 +21,7 @@ Testnet 1 remains a separate network and is expected to run until **24 November 
 | Binary | `worrelld` (`v0.2.0`) |
 | Denomination | `uworrell` (1 WORRELL = 1,000,000 uworrell) |
 | Node home | `~/.worrell-testnet-2` |
-| Default service | `worrel-testnet-2.service` |
+| Default service | `worrelld-testnet-2.service` |
 | Default port prefix | `18` |
 | Default P2P/RPC/ABCI | `18656` / `18657` / `18658` |
 | Minimum gas price | `0.025uworrell` |
@@ -65,7 +65,7 @@ Run the reviewed public launcher as the node OS user:
 bash <(curl -fsSL https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/main/resources/valleyofWorrel.sh)
 ```
 
-Use the Testnet 2 home and service defaults. On a root-only host the installer uses `/var/lib/worrell-testnet-2`, the `worrell-testnet-2` service account, and `/etc/worrel-testnet-2/worrelld.env`; it does not use the Testnet 1 service or home.
+Use the Testnet 2 home and service defaults. On a root-only host the installer uses `/var/lib/worrell-testnet-2`, the `worrell-testnet-2` service account, and `/etc/worrelld-testnet-2/worrelld.env`; it does not use the Testnet 1 service or home.
 
 ## Features
 

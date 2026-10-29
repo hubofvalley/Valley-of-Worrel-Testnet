@@ -53,7 +53,7 @@
         }
       },
       "services": {
-        "consensus": "worrel-testnet-2.service"
+        "consensus": "worrelld-testnet-2.service"
       },
       "home_dir": "$HOME/.worrell-testnet-2 (or /var/lib/worrell-testnet-2 in root-only mode)",
       "binary_install_dir": "$HOME/go/bin (or /usr/local/bin in root-only mode)"

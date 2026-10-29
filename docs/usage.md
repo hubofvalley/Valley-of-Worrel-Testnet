@@ -10,7 +10,7 @@ Run as the node OS user:
 bash <(curl -fsSL https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/main/resources/valleyofWorrel.sh)
 ```
 
-Do not use `sudo bash` when a normal node user exists. The default home is `~/.worrell-testnet-2`, the default service is `worrel-testnet-2.service`, and the Valley-local default port prefix is `18`:
+Do not use `sudo bash` when a normal node user exists. The default home is `~/.worrell-testnet-2`, the default service is `worrelld-testnet-2.service`, and the Valley-local default port prefix is `18`:
 
 | Role | Default | Exposure |
 |---|---:|---|
@@ -22,7 +22,7 @@ Do not use `sudo bash` when a normal node user exists. The default home is `~/.w
 | gRPC | 18090 | Loopback |
 | gRPC-Web | 18091 | Loopback |
 
-The prefix is local operator configuration, not a protocol parameter. The installer uses `/var/lib/worrell-testnet-2` and `/etc/worrel-testnet-2/worrelld.env` in root-only mode.
+The prefix is local operator configuration, not a protocol parameter. The installer uses `/var/lib/worrell-testnet-2` and `/etc/worrelld-testnet-2/worrelld.env` in root-only mode.
 
 ## Menu options
 
