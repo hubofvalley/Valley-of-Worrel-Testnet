@@ -101,7 +101,7 @@ worrelld start --home "$WORRELL_HOME"
 worrelld status --home "$WORRELL_HOME" 2>&1 | jq '.sync_info | {latest_block_height, catching_up}'
 ```
 
-The Valley installer keeps `worrelld-testnet-2.service` stopped after pre-genesis. The final-genesis helper also does not start it automatically. Start it manually at the coordinated time.
+The Valley installer keeps `worrel-testnet-2.service` stopped after pre-genesis. The final-genesis helper also does not start it automatically. Start it manually at the coordinated time.
 
 ## Ports and service isolation
 

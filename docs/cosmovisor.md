@@ -27,7 +27,7 @@ The default is direct mode. The pruning choice made during installation is prese
 1. Launch Valley of Worrell.
 2. Select `1. Node Interactions` -> `g. Manage Cosmovisor`.
 3. Select `1. Migrate current node to Cosmovisor`.
-4. Confirm the service is active and inspect `sudo journalctl -u worrelld-testnet-2 -fn 100`.
+4. Confirm the service is active and inspect `sudo journalctl -u worrel-testnet-2 -fn 100`.
 
 Migration stops the service briefly, preserves node data and `data/upgrade-info.json`, backs up the previous service unit and shell profile, preserves the prior active/enabled state, and restarts the service only if it was active before migration. It refuses to migrate while a pending `data/upgrade-info.json` exists.
 
@@ -58,7 +58,7 @@ Staging is not activation. After a successful staging run, `current` remains on 
 - **Verify staged binary before the upgrade** checks the exact plan name, staged `upgrades/<name>/bin/worrelld` executable and version, and confirms that `current` has not been promoted early.
 - **Verify post-upgrade activation and recovery** requires `data/upgrade-info.json`, checks its exact plan name and optional height, requires `current` to resolve to the matching `upgrades/<name>`, checks the active binary version, and rejects an inactive service or restart loop.
 
-The check is read-only and never deletes or rewrites `data/upgrade-info.json`. If `upgrade-info.json` is present but `current` still points to `genesis`, treat that as a failed hand-off: keep the file, inspect `sudo journalctl -u worrelld-testnet-2 -n 100 --no-pager`, and recover only after the exact binary and plan have been verified.
+The check is read-only and never deletes or rewrites `data/upgrade-info.json`. If `upgrade-info.json` is present but `current` still points to `genesis`, treat that as a failed hand-off: keep the file, inspect `sudo journalctl -u worrel-testnet-2 -n 100 --no-pager`, and recover only after the exact binary and plan have been verified.
 
 ## Recovery
 
