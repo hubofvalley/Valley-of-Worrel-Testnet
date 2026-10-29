@@ -5,7 +5,7 @@
 Run the reviewed public launcher directly:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/main/resources/valleyofWorrel.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/testnet-1/resources/valleyofWorrel.sh)
 ```
 
 Run as the node OS user. Do not use `sudo bash` when a normal node user exists; the scripts request sudo only for packages, firewall, and systemd operations. On a root-only RPC host, the installer creates a dedicated `worrell` service user, uses `/var/lib/worrell`, and writes the service with that unprivileged account.

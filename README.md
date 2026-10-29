@@ -40,7 +40,7 @@ This Valley package turns the official Worrell node procedure into an auditable,
 Run the reviewed public launcher directly:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/main/resources/valleyofWorrel.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/testnet-1/resources/valleyofWorrel.sh)
 ```
 
 Run it as the OS user that owns the node. On a root-only RPC host, the installer now creates a dedicated `worrell` system user and stores the node under `/var/lib/worrell`; do not wrap the launcher in `sudo` when a normal node user exists.
