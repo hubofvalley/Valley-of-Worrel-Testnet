@@ -24,7 +24,7 @@ else
 fi
 SERVICE_GROUP="${WORRELL_SERVICE_GROUP:-$SERVICE_USER}"
 if [ "$ROOT_MODE" = yes ]; then
-    WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env
+    WORRELL_ENV_FILE=/etc/worrel-testnet-2/worrelld.env
 else
     WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell-testnet-2.env}"
 fi
@@ -85,7 +85,7 @@ valid_service() { [[ "$1" =~ ^[A-Za-z0-9_.@-]+$ ]]; }
 write_runtime_env() {
     local env_file="$WORRELL_ENV_FILE"
     if [ "$ROOT_MODE" = yes ]; then
-        install -d -m 0755 /etc/worrelld-testnet-2
+        install -d -m 0755 /etc/worrel-testnet-2
         install -m 0644 /dev/null "$env_file"
     else
         install -d -m 0750 "$HOME_DIR"
@@ -334,8 +334,8 @@ while true; do
 done
 WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-}
 while [ -z "$WORRELL_SERVICE_NAME" ]; do
-    read -r -p "Enter service name [worrelld-testnet-2]: " WORRELL_SERVICE_NAME
-    WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld-testnet-2}
+    read -r -p "Enter service name [worrel-testnet-2]: " WORRELL_SERVICE_NAME
+    WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrel-testnet-2}
     valid_service "$WORRELL_SERVICE_NAME" || { echo -e "${RED}Invalid service name.${RESET}"; WORRELL_SERVICE_NAME=""; }
 done
 read -r -p "Enable UFW and allow P2P port ${PORT_PREFIX}656? (yes/no) [no]: " ENABLE_UFW

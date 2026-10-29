@@ -19,7 +19,7 @@ readonly ITROCKET_BASE_URL="https://server-3.itrocket.net/testnet/worrell"
 readonly SYCHONIX_SNAPSHOT_URL="https://snapshot.sychonix.com/testnet/worrell/worrell-snapshot.tar.lz4"
 WORRELL_HOME="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell-testnet-2}" || printf '%s' "$HOME/.worrell-testnet-2")}"
 if [ "$ROOT_MODE" = yes ]; then
-    WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env
+    WORRELL_ENV_FILE=/etc/worrel-testnet-2/worrelld.env
 else
     WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell-testnet-2.env}"
 fi
@@ -27,7 +27,7 @@ if [ -r "$WORRELL_ENV_FILE" ]; then
     # shellcheck disable=SC1090
     source "$WORRELL_ENV_FILE"
 fi
-WORRELL_SERVICE_NAME="${WORRELL_SERVICE_NAME:-worrelld-testnet-2}"
+WORRELL_SERVICE_NAME="${WORRELL_SERVICE_NAME:-worrel-testnet-2}"
 WORRELL_SERVICE_USER="${WORRELL_SERVICE_USER:-$([ "$ROOT_MODE" = yes ] && printf worrell-testnet-2 || id -un)}"
 WORRELL_SERVICE_GROUP="${WORRELL_SERVICE_GROUP:-$WORRELL_SERVICE_USER}"
 if [ "$ROOT_MODE" = yes ]; then sudo() { "$@"; }; fi
