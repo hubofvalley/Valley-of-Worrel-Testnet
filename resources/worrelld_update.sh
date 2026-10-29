@@ -12,7 +12,7 @@ ROOT_MODE=no
 if [ "${EUID:-$(id -u)}" -eq 0 ]; then ROOT_MODE=yes; fi
 WORRELL_HOME="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell-testnet-2}" || printf '%s' "$HOME/.worrell-testnet-2")}"
 if [ "$ROOT_MODE" = yes ]; then
-    WORRELL_ENV_FILE=/etc/worrel-testnet-2/worrelld.env
+    WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env
 else
     WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell-testnet-2.env}"
 fi
@@ -22,7 +22,7 @@ if [ -r "$WORRELL_ENV_FILE" ]; then
 fi
 VERSION=${1:-${WORRELL_TARGET_VERSION:-v0.2.0}}
 BINARY_DIR="${WORRELL_BINARY_DIR:-$([ "$ROOT_MODE" = yes ] && printf '/usr/local/bin' || printf '%s' "$HOME/go/bin")}"
-SERVICE=${WORRELL_SERVICE_NAME:-worrel-testnet-2}
+SERVICE=${WORRELL_SERVICE_NAME:-worrelld-testnet-2}
 SERVICE_USER=${WORRELL_SERVICE_USER:-$([ "$ROOT_MODE" = yes ] && printf worrell-testnet-2 || id -un)}
 SERVICE_GROUP=${WORRELL_SERVICE_GROUP:-$SERVICE_USER}
 if [ "$ROOT_MODE" = yes ]; then sudo() { "$@"; }; fi
