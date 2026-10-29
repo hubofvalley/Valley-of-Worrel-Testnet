@@ -10,25 +10,25 @@ export PATH="$HOME/go/bin:/usr/local/bin:$PATH"
 
 ROOT_MODE=no
 if [ "${EUID:-$(id -u)}" -eq 0 ]; then ROOT_MODE=yes; fi
-WORRELL_HOME="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell}" || printf '%s' "$HOME/.worrell")}"
+WORRELL_HOME="${WORRELL_HOME:-$([ "$ROOT_MODE" = yes ] && printf '/var/lib/%s' "${WORRELL_SERVICE_USER:-worrell-testnet-2}" || printf '%s' "$HOME/.worrell-testnet-2")}"
 if [ "$ROOT_MODE" = yes ]; then
-    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+    WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env
 else
-    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell.env}"
+    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$WORRELL_HOME/.worrell-testnet-2.env}"
 fi
 if [ -r "$WORRELL_ENV_FILE" ]; then
     # shellcheck disable=SC1090
     source "$WORRELL_ENV_FILE"
 fi
-VERSION=${1:-${WORRELL_TARGET_VERSION:-v0.1.2}}
+VERSION=${1:-${WORRELL_TARGET_VERSION:-v0.2.0}}
 BINARY_DIR="${WORRELL_BINARY_DIR:-$([ "$ROOT_MODE" = yes ] && printf '/usr/local/bin' || printf '%s' "$HOME/go/bin")}"
-SERVICE=${WORRELL_SERVICE_NAME:-worrelld}
-SERVICE_USER=${WORRELL_SERVICE_USER:-$([ "$ROOT_MODE" = yes ] && printf worrell || id -un)}
+SERVICE=${WORRELL_SERVICE_NAME:-worrelld-testnet-2}
+SERVICE_USER=${WORRELL_SERVICE_USER:-$([ "$ROOT_MODE" = yes ] && printf worrell-testnet-2 || id -un)}
 SERVICE_GROUP=${WORRELL_SERVICE_GROUP:-$SERVICE_USER}
 if [ "$ROOT_MODE" = yes ]; then sudo() { "$@"; }; fi
 case "$(uname -m)" in
-    x86_64|amd64) artifact="${VERSION}_linux_amd64.tar.gz"; expected="1542bc561227ecd6bfb2d35f3bc81b8fd34e6f6db1404923b5bf5bd4b8303cd2" ;;
-    aarch64|arm64) artifact="${VERSION}_linux_arm64.tar.gz"; expected="3d4a9ffc754c39400c31af6599d030c2652914094a772f38e7a8284aafc7f58f" ;;
+    x86_64|amd64) artifact="${VERSION}_linux_amd64.tar.gz"; expected="1ccccd39d57467236a2f64ee4809fee4de3cc3f1bc02c47e3e22aa9c6b414c76" ;;
+    aarch64|arm64) artifact="${VERSION}_linux_arm64.tar.gz"; expected="e4ad1e1bef4aa4656d03a543076d4cc08f91114a1cf93454218063f05992fb52" ;;
     *) echo -e "${RED}Unsupported architecture.${RESET}"; exit 1 ;;
 esac
 workdir=$(mktemp -d)
@@ -39,7 +39,7 @@ curl -fsSL "https://github.com/worrellchain/worrell/releases/download/${VERSION}
     cd "$workdir"
     grep -E "[[:space:]]${artifact//./\\.}$" release_checksum | sha256sum -c -
 )
-if [ "$VERSION" = "v0.1.2" ]; then
+if [ "$VERSION" = "v0.2.0" ]; then
     echo "$expected  $workdir/$artifact" | sha256sum -c -
 fi
 tar -xzf "$workdir/$artifact" -C "$workdir"

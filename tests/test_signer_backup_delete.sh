@@ -24,10 +24,10 @@ make_node() {
 }
 
 make_node
-[ "$(managed_worrell_home_for_mode no)" = "$HOME/.worrell" ]
-WORRELL_SERVICE_USER=worrell
+[ "$(managed_worrell_home_for_mode no)" = "$HOME/.worrell-testnet-2" ]
+WORRELL_SERVICE_USER=worrell-testnet-2
 export WORRELL_SERVICE_USER
-[ "$(managed_worrell_home_for_mode yes)" = /var/lib/worrell ]
+[ "$(managed_worrell_home_for_mode yes)" = /var/lib/worrell-testnet-2 ]
 WORRELL_SERVICE_USER='bad/name'
 ! managed_worrell_home_for_mode yes
 WORRELL_SERVICE_USER=$(id -un)

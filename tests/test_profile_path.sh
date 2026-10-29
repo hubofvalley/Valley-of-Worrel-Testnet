@@ -25,12 +25,12 @@ HOME="$fixture/home" SAVE_ENV="$fixture/save_env.sh" bash -c '
   set -euo pipefail
   source "$SAVE_ENV"
   BINARY_DIR="$HOME/go/bin"
-  CHAIN_ID=worrell-testnet-1
-  HOME_DIR="$HOME/.worrell"
+  CHAIN_ID=worrell-testnet-2
+  HOME_DIR="$HOME/.worrell-testnet-2"
   WORRELL_SERVICE_NAME=worrelld
   PORT_PREFIX=26
   MONIKER=Worrell-Test
-  WORRELL_VERSION=v0.1.2
+  WORRELL_VERSION=v0.2.0
   save_env
   save_env
   canonical_line='export PATH="$HOME/go/bin:$PATH"'

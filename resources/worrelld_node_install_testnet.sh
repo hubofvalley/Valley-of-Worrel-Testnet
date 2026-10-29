@@ -9,24 +9,24 @@ source "$HOME/.bash_profile" 2>/dev/null || true
 set -u
 export PATH="$HOME/go/bin:/usr/local/bin:$PATH"
 
-readonly WORRELL_VERSION="${WORRELL_TARGET_VERSION:-v0.1.2}"
-readonly CHAIN_ID="worrell-testnet-1"
+readonly WORRELL_VERSION="${WORRELL_TARGET_VERSION:-v0.2.0}"
+readonly CHAIN_ID="worrell-testnet-2"
 ROOT_MODE=no
 SERVICE_USER="${WORRELL_SERVICE_USER:-${USER:-$(id -un)}}"
 if [ "${EUID:-$(id -u)}" -eq 0 ]; then
     ROOT_MODE=yes
-    SERVICE_USER="${WORRELL_SERVICE_USER:-worrell}"
+    SERVICE_USER="${WORRELL_SERVICE_USER:-worrell-testnet-2}"
     HOME_DIR="${WORRELL_HOME:-/var/lib/$SERVICE_USER}"
     BINARY_DIR="${WORRELL_BINARY_DIR:-/usr/local/bin}"
 else
-    HOME_DIR="${WORRELL_HOME:-$HOME/.worrell}"
+    HOME_DIR="${WORRELL_HOME:-$HOME/.worrell-testnet-2}"
     BINARY_DIR="${WORRELL_BINARY_DIR:-$HOME/go/bin}"
 fi
 SERVICE_GROUP="${WORRELL_SERVICE_GROUP:-$SERVICE_USER}"
 if [ "$ROOT_MODE" = yes ]; then
-    WORRELL_ENV_FILE=/etc/worrelld/worrelld.env
+    WORRELL_ENV_FILE=/etc/worrelld-testnet-2/worrelld.env
 else
-    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell.env}"
+    WORRELL_ENV_FILE="${WORRELL_ENV_FILE:-$HOME_DIR/.worrell-testnet-2.env}"
 fi
 readonly COSMOVISOR_VERSION="${WORRELL_COSMOVISOR_VERSION:-v1.7.3}"
 COSMOVISOR_BIN="$BINARY_DIR/cosmovisor"
@@ -38,9 +38,9 @@ case "$WORRELL_UNSAFE_SKIP_BACKUP" in
     true|false) ;;
     *) echo -e "${RED}WORRELL_UNSAFE_SKIP_BACKUP must be true or false.${RESET}" >&2; exit 1 ;;
 esac
-readonly GENESIS_URL="https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-1/genesis.json"
-readonly GENESIS_SHA256="a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd"
-readonly PEERS="bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656,40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656"
+readonly GENESIS_URL="https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-2/pre-genesis.json"
+readonly GENESIS_SHA256="f5231dc924c762bdbe5aa0605ed6472288c9b71f4b175015e0559edccdd96b94"
+readonly PEERS=""
 
 PRUNING_MODE=pruned
 PRUNING_MODE_ARG_SET=no
@@ -82,10 +82,34 @@ prompt_default() {
 valid_prefix() { [[ "$1" =~ ^[0-9]{2}$ ]] && ((10#$1 >= 10 && 10#$1 <= 64)); }
 valid_service() { [[ "$1" =~ ^[A-Za-z0-9_.@-]+$ ]]; }
 
+validate_t2_environment() {
+    local expected_home expected_env expected_bin expected_user
+    if [ "$ROOT_MODE" = yes ]; then
+        expected_home=/var/lib/worrell-testnet-2
+        expected_env=/etc/worrelld-testnet-2/worrelld.env
+        expected_bin=/usr/local/bin
+        expected_user=worrell-testnet-2
+    else
+        expected_home="$HOME/.worrell-testnet-2"
+        expected_env="$expected_home/.worrell-testnet-2.env"
+        expected_bin="$HOME/go/bin"
+        expected_user="$(id -un)"
+    fi
+    [ "$CHAIN_ID" = worrell-testnet-2 ] || { echo -e "${RED}Refusing a non-Testnet-2 chain identity.${RESET}" >&2; return 1; }
+    [ "$WORRELL_VERSION" = v0.2.0 ] || { echo -e "${RED}Refusing a non-v0.2.0 runtime target.${RESET}" >&2; return 1; }
+    [ "$WORRELL_SERVICE_NAME" = worrelld-testnet-2 ] || { echo -e "${RED}Refusing service name $WORRELL_SERVICE_NAME; expected worrelld-testnet-2.${RESET}" >&2; return 1; }
+    [ "$SERVICE_USER" = "$expected_user" ] || { echo -e "${RED}Refusing service user $SERVICE_USER; expected $expected_user.${RESET}" >&2; return 1; }
+    [ "$SERVICE_GROUP" = "$expected_user" ] || { echo -e "${RED}Refusing service group $SERVICE_GROUP; expected $expected_user.${RESET}" >&2; return 1; }
+    [ "$HOME_DIR" = "$expected_home" ] || { echo -e "${RED}Refusing node home $HOME_DIR; expected $expected_home.${RESET}" >&2; return 1; }
+    [ "$BINARY_DIR" = "$expected_bin" ] || { echo -e "${RED}Refusing binary directory $BINARY_DIR; expected $expected_bin.${RESET}" >&2; return 1; }
+    [ "$WORRELL_ENV_FILE" = "$expected_env" ] || { echo -e "${RED}Refusing environment file $WORRELL_ENV_FILE; expected $expected_env.${RESET}" >&2; return 1; }
+    [ "$PORT_PREFIX" = 18 ] || { echo -e "${RED}Refusing port prefix $PORT_PREFIX; Testnet 2 requires prefix 18.${RESET}" >&2; return 1; }
+}
+
 write_runtime_env() {
     local env_file="$WORRELL_ENV_FILE"
     if [ "$ROOT_MODE" = yes ]; then
-        install -d -m 0755 /etc/worrelld
+        install -d -m 0755 /etc/worrelld-testnet-2
         install -m 0644 /dev/null "$env_file"
     else
         install -d -m 0750 "$HOME_DIR"
@@ -263,10 +287,10 @@ install_prebuilt() {
         cd "$workdir"
         grep -E "[[:space:]]${artifact//./\\.}$" release_checksum | sha256sum -c -
     )
-    if [ "$WORRELL_VERSION" = "v0.1.2" ]; then
+    if [ "$WORRELL_VERSION" = "v0.2.0" ]; then
         case "$artifact" in
-            v0.1.2_linux_amd64.tar.gz) echo "1542bc561227ecd6bfb2d35f3bc81b8fd34e6f6db1404923b5bf5bd4b8303cd2  $workdir/$artifact" | sha256sum -c - ;;
-            v0.1.2_linux_arm64.tar.gz) echo "3d4a9ffc754c39400c31af6599d030c2652914094a772f38e7a8284aafc7f58f  $workdir/$artifact" | sha256sum -c - ;;
+            v0.2.0_linux_amd64.tar.gz) echo "1ccccd39d57467236a2f64ee4809fee4de3cc3f1bc02c47e3e22aa9c6b414c76  $workdir/$artifact" | sha256sum -c - ;;
+            v0.2.0_linux_arm64.tar.gz) echo "e4ad1e1bef4aa4656d03a543076d4cc08f91114a1cf93454218063f05992fb52  $workdir/$artifact" | sha256sum -c - ;;
         esac
     fi
     tar -xzf "$workdir/$artifact" -C "$workdir"
@@ -327,15 +351,12 @@ fi
 
 read -r -p "Enter node moniker [grandvalley-lightnode]: " MONIKER
 MONIKER=${MONIKER:-grandvalley-lightnode}
-while true; do
-    PORT_PREFIX=$(prompt_default 'Enter two-digit port prefix (17 uses P2P/RPC 17656/17657; API/gRPC become 17317/17090)' '17')
-    valid_prefix "$PORT_PREFIX" && break
-    echo -e "${RED}Use exactly two digits, for example 17 or 38.${RESET}"
-done
+PORT_PREFIX=18
+echo -e "${CYAN}Using the fixed Worrell Testnet 2 port prefix: ${PORT_PREFIX}.${RESET}"
 WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-}
 while [ -z "$WORRELL_SERVICE_NAME" ]; do
-    read -r -p "Enter service name [worrelld]: " WORRELL_SERVICE_NAME
-    WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld}
+    read -r -p "Enter service name [worrelld-testnet-2]: " WORRELL_SERVICE_NAME
+    WORRELL_SERVICE_NAME=${WORRELL_SERVICE_NAME:-worrelld-testnet-2}
     valid_service "$WORRELL_SERVICE_NAME" || { echo -e "${RED}Invalid service name.${RESET}"; WORRELL_SERVICE_NAME=""; }
 done
 read -r -p "Enable UFW and allow P2P port ${PORT_PREFIX}656? (yes/no) [no]: " ENABLE_UFW
@@ -344,6 +365,7 @@ SSH_PORT=$(prompt_default 'SSH TCP port to preserve in UFW' '22')
 [[ "$SSH_PORT" =~ ^[0-9]+$ ]] && ((SSH_PORT >= 1 && SSH_PORT <= 65535)) || { echo -e "${RED}Invalid SSH port.${RESET}"; exit 1; }
 read -r -p "Use prebuilt ${WORRELL_VERSION} binary? (yes/no) [yes]: " USE_PREBUILT
 USE_PREBUILT=${USE_PREBUILT:-yes}
+validate_t2_environment || exit 1
 
 if [ "$ROOT_MODE" = yes ]; then
     case "$HOME_DIR" in
@@ -352,21 +374,53 @@ if [ "$ROOT_MODE" = yes ]; then
     esac
 else
     case "$HOME_DIR" in
-        "$HOME/.worrell"|"$HOME"/*) ;;
+        "$HOME/.worrell-testnet-2"|"$HOME"/*) ;;
         *) echo -e "${RED}Refusing node home outside the current user's home: $HOME_DIR${RESET}" >&2; exit 1 ;;
     esac
 fi
 prepare_service_account
 
+fence_existing_service() {
+    local active_state enabled_state
+    active_state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+    case "$active_state" in
+        active|activating|deactivating|reloading)
+            sudo systemctl stop "$WORRELL_SERVICE_NAME"
+            ;;
+        inactive|dead|failed|unknown)
+            ;;
+        *)
+            echo -e "${RED}Service state for $WORRELL_SERVICE_NAME is ambiguous; refusing to replace the node home.${RESET}" >&2
+            return 1
+            ;;
+    esac
+    active_state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+    case "$active_state" in
+        inactive|dead|failed|unknown) ;;
+        *) echo -e "${RED}Service $WORRELL_SERVICE_NAME is still active after stop; refusing to replace the node home.${RESET}" >&2; return 1 ;;
+    esac
+    enabled_state=$(sudo systemctl is-enabled "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+    case "$enabled_state" in
+        enabled|indirect|generated|linked|linked-runtime|alias)
+            sudo systemctl disable "$WORRELL_SERVICE_NAME"
+            ;;
+        disabled|static|masked|transient|not-found)
+            ;;
+        *)
+            echo -e "${RED}Enablement state for $WORRELL_SERVICE_NAME is ambiguous; refusing to replace the node home.${RESET}" >&2
+            return 1
+            ;;
+    esac
+}
+
 sudo apt-get update
 sudo apt-get install -y curl git jq build-essential wget lz4 unzip openssl ca-certificates
-sudo systemctl stop "$WORRELL_SERVICE_NAME" 2>/dev/null || true
-sudo systemctl disable "$WORRELL_SERVICE_NAME" 2>/dev/null || true
+fence_existing_service
 sudo rm -f "/etc/systemd/system/${WORRELL_SERVICE_NAME}.service"
 
 if [ -d "$HOME_DIR" ]; then
-    backup="$HOME/.worrell-backups/$(date +%Y%m%d-%H%M%S)"
-    mkdir -p "$HOME/.worrell-backups"
+    backup="$HOME/.worrell-testnet-2-backups/$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$HOME/.worrell-testnet-2-backups"
     mv "$HOME_DIR" "$backup"
     echo -e "${YELLOW}Existing node home moved to $backup${RESET}"
 fi
@@ -437,13 +491,16 @@ fi
 write_runtime_env
 save_env
 sudo systemctl daemon-reload
-sudo systemctl enable --now "$WORRELL_SERVICE_NAME"
-if sudo systemctl is-active --quiet "$WORRELL_SERVICE_NAME"; then
-    echo -e "${GREEN}Worrell node installed and service is active.${RESET}"
-else
-    echo -e "${RED}Service did not become active. Inspect: sudo journalctl -u ${WORRELL_SERVICE_NAME} -n 100 --no-pager${RESET}" >&2
-    exit 1
-fi
+sudo systemctl disable "$WORRELL_SERVICE_NAME"
+enabled_state=$(sudo systemctl is-enabled "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+[ "$enabled_state" = disabled ] || { echo -e "${RED}Service $WORRELL_SERVICE_NAME is not disabled after installation; refusing handoff.${RESET}" >&2; exit 1; }
+active_state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+case "$active_state" in
+    inactive|dead|failed|unknown) ;;
+    *) echo -e "${RED}Service $WORRELL_SERVICE_NAME is active after installation; refusing handoff.${RESET}" >&2; exit 1 ;;
+esac
+echo -e "${GREEN}Worrell testnet-2 node installed with verified pre-genesis.${RESET}"
+echo -e "${YELLOW}The service remains disabled and stopped until final genesis and its published checksum/peers are applied through the genesis ceremony.${RESET}"
 echo -e "${CYAN}Service user:${RESET} $SERVICE_USER"
 echo -e "${CYAN}Home:${RESET} $HOME_DIR"
 echo -e "${CYAN}Pruning:${RESET} $PRUNING_MODE"

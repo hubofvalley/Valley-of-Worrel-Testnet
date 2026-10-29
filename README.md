@@ -1,77 +1,99 @@
-# Valley of Worrell - Testnet
+# Valley of Worrell - Testnet 2
 
-Interactive terminal toolkit by **Grand Valley** for deploying and managing a Worrell Testnet full node and validator.
+Interactive terminal toolkit by **Grand Valley** for the separate `worrell-testnet-2` genesis-ceremony network.
 
-> Official project spelling: **Worrell**. The Valley product name follows the official spelling: **Valley of Worrell**.
+> Official project spelling: **Worrell**. This repository is the Testnet 2 lane; it does not replace Testnet 1.
 
 ## Overview
 
-**Valley of Worrell Testnet** is an open-source Grand Valley project for operating nodes and validators on the **Worrell** test network.
+**Worrell** is a proof-of-stake blockchain built with Ignite CLI and the Cosmos SDK, using CometBFT consensus. The official Testnet 2 rehearsal starts from a published pre-genesis, collects signed validator genesis transactions during a bounded window, and starts every participating validator from one coordinator-published final genesis.
 
-**Worrell** is a proof-of-stake blockchain built with Ignite CLI and the Cosmos SDK, using CometBFT consensus and focused on payments and energy infrastructure. The project includes staking and delegation, on-chain governance, dynamic inflation, and IBC support that is installed upstream but disabled at genesis while the network stabilises.
+This Valley package turns the official node and ceremony procedure into an auditable local workflow. It covers the separate node home, port mapping, v0.2.0 installation, pre-genesis verification, gentx preview and confirmation, final-genesis checksum/peer application, validator/key operations, and optional Cosmovisor preparation. It does not invent final peers, public RPCs, faucet details, or a final-genesis checksum before the coordinator publishes them.
 
-This Valley package turns the official Worrell node procedure into an auditable, interactive workflow. It covers node installation, configuration, syncing, peer management, validator/key operations, systemd lifecycle, and Cosmovisor-based upgrade preparation. It does not claim to provide an official Worrell endpoint, faucet automation, or automatic transaction signing.
+Testnet 1 remains a separate network and is expected to run until **24 November 2026**. Do not reuse its `~/.worrell` home, service, signing key, genesis, or ports for Testnet 2.
 
 ## Network
 
 | Field | Value |
 |---|---|
-| Chain | Worrell Testnet |
-| Chain ID | `worrell-testnet-1` |
-| Binary | `worrelld` (`v0.1.2`, upstream prerelease) |
+| Chain | Worrell Testnet 2 |
+| Chain ID | `worrell-testnet-2` |
+| Binary | `worrelld` (`v0.2.0`) |
 | Denomination | `uworrell` (1 WORRELL = 1,000,000 uworrell) |
-| Node home | `~/.worrell` |
-| Default service | `worrelld.service` |
-| Default P2P/RPC/ABCI | `26656` / `26657` / `26658` |
+| Node home | `~/.worrell-testnet-2` |
+| Default service | `worrelld-testnet-2.service` |
+| Default port prefix | `18` |
+| Default P2P/RPC/ABCI | `18656` / `18657` / `18658` |
 | Minimum gas price | `0.025uworrell` |
+| Final genesis checksum | **UNKNOWN until published** |
+| Final persistent peers | **UNKNOWN until published** |
+
+The port prefix is a Valley-local default chosen to keep Testnet 2 beside Testnet 1. It is not a protocol parameter. RPC, API, gRPC, gRPC-Web, and Prometheus default to loopback; only P2P is public by default.
+
+## Genesis ceremony
+
+The official ceremony currently documents:
+
+- pre-genesis window: 27 October 2026 10:00 UTC to 6 November 2026 10:00 UTC;
+- final genesis publication: 7 November 2026;
+- network start: 10 November 2026 08:00 UTC;
+- Testnet 1 closes: 24 November 2026.
+
+The Valley menu option `1i` / **Genesis ceremony** can:
+
+1. fetch `pre-genesis.json` and verify SHA-256 `f5231dc924c762bdbe5aa0605ed6472288c9b71f4b175015e0559edccdd96b94`;
+2. preview the exact gentx command and run it only after typing `CREATE-GENTX`;
+3. apply final `genesis.json` only when the coordinator-supplied checksum and persistent peers are entered, then validate the local genesis.
+
+The installer leaves the service disabled and stopped after installing pre-genesis. Do not start or enable a node as the final network until the published final genesis, checksum, peers, and `genesis_time` are available.
 
 ## Requirements
 
-| Resource | Testnet recommendation |
+| Resource | Recommendation |
 |---|---|
 | Operating system | Ubuntu 22.04 LTS |
 | CPU | 2 vCPU |
 | RAM | 4 GB |
 | Storage | 100 GB SSD |
-| Network | Stable connection; public P2P reachability |
+| Network | Stable connection with public P2P reachability |
 
 ## Run
 
-Run the reviewed public launcher directly:
+Run the reviewed public launcher as the node OS user:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/hubofvalley/Valley-of-Worrel-Testnet/main/resources/valleyofWorrel.sh)
 ```
 
-Run it as the OS user that owns the node. On a root-only RPC host, the installer now creates a dedicated `worrell` system user and stores the node under `/var/lib/worrell`; do not wrap the launcher in `sudo` when a normal node user exists.
+Use the Testnet 2 home and service defaults. On a root-only host the installer uses `/var/lib/worrell-testnet-2`, the `worrell-testnet-2` service account, and `/etc/worrelld-testnet-2/worrelld.env`; it does not use the Testnet 1 service or home.
 
 ## Features
 
-- Valley of startup flow, menu, colour scheme, and safety prompts.
-- Pinned upstream `v0.1.2` prerelease binary with release-checksum and asset-hash verification.
-- Optional build-from-source path using the official Worrell repository.
-- Official genesis download and `worrelld genesis validate-genesis` gate.
-- Official persistent peers, configurable two-digit local port prefix, and optional UFW.
-- Idempotent systemd service installation with ownership and backup checks.
-- Selectable pruned or archive application-state storage, optional direct `worrelld` or Cosmovisor-managed service, guarded staged/post-upgrade hand-off verification, and guarded pruned snapshot application from ITRocket or Sychonix. Cosmovisor automatic binary downloads remain disabled; validator-capable paths default to `UNSAFE_SKIP_BACKUP=false`.
-- Read-only status, logs, peer management, key/balance helpers, validator creation, guarded `tx staking delegate` delegation, and unjail flow.
-- Snapshot application is available through a guarded pruned-snapshot flow; archive snapshots remain disabled until a provider is verified.
-- Faucet requests remain manual; validator, delegation, and unjail transactions require a local preview and explicit operator confirmation.
+- Pinned official `v0.2.0` release tarballs with upstream `release_checksum` and asset-hash verification.
+- Separate Testnet 2 home, service, default ports, and signer state.
+- Verified official pre-genesis download and `worrelld genesis validate-genesis` gate.
+- Gentx preview with explicit manual confirmation; no automatic key creation or submission.
+- Final-genesis mode with required coordinator checksum and persistent peers.
+- Optional direct `worrelld` or Cosmovisor service, with automatic binary downloads disabled.
+- Read-only status/log helpers and guarded validator/key operations.
+
+Final public RPCs, peers, faucet, explorers, and snapshot sources are **UNKNOWN** until official Testnet 2 metadata is published. Snapshot import is intentionally disabled until a chain-bound provider and checksum are verified; the menu never copies Testnet 1 endpoints.
 
 ## Documentation
 
 - [Usage guide](docs/usage.md)
-- [Manual node guide](docs/node-guide.md)
+- [Manual node and ceremony guide](docs/node-guide.md)
+- [Cosmovisor guide](docs/cosmovisor.md)
 - [Version manifest](VERSIONS.json)
-- [Cosmovisor upgrade guide](docs/cosmovisor.md)
 
 ## Official links
 
 - [Worrell source](https://github.com/worrellchain/worrell)
+- [v0.2.0 release](https://github.com/worrellchain/worrell/releases/tag/v0.2.0)
 - [Worrell node runbook](https://github.com/worrellchain/worrell/blob/main/docs/RUNNING-A-NODE.md)
-- [Worrell network metadata](https://github.com/worrellchain/networks/tree/main/worrell-testnet-1)
+- [Worrell Testnet 2 network metadata](https://github.com/worrellchain/networks/tree/main/worrell-testnet-2)
+- [Genesis ceremony README](https://github.com/worrellchain/networks/blob/main/worrell-testnet-2/README.md)
 - [Validator Telegram](https://t.me/worrellvalidators)
-- [Worrell X](https://x.com/worrellchain)
 
 ## Connect with Grand Valley
 

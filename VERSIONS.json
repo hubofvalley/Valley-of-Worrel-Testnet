@@ -1,44 +1,28 @@
 {
   "schema_version": "1.0",
-  "network_name": "worrell-testnet",
-  "human_name": "Valley of Worrell - Testnet",
-  "last_updated": "2026-10-05",
+  "network_name": "worrell-testnet-2",
+  "human_name": "Valley of Worrell - Testnet 2",
+  "last_updated": "2026-10-29",
   "source_of_truth": "github.com/hubofvalley/Valley-of-Worrel-Testnet (resources/*.sh)",
-  "verification_status": "live_verified",
-  "verification_note": "Live-verified runtime remains v0.1.2; official Worrell v0.1.3 release metadata and checksums were verified on 2026-10-05 for the scheduled governance upgrade option below. The live_deployment backup value records the existing lightnode profile; installer and migration defaults are validator-safe false.",
+  "verification_status": "needs_live_verification",
+  "verification_note": "Official worrelld v0.2.0 release metadata and linux asset checksums, plus the official worrell-testnet-2 pre-genesis and checksum, were verified on 2026-10-29. Final genesis checksum, peers, public endpoints, and live deployment remain UNKNOWN until the coordinator publishes the final genesis. worrell-testnet-1 remains a separate network until 2026-11-24.",
   "release": {
-    "tag": "v0.1.2",
-    "commit": "2d849e1a33f6204952412a14e7b12cb5ef3870dd",
-    "prerelease": true,
+    "tag": "v0.2.0",
+    "commit": "5523bf67c81e40587d06a67fb14af9bf278e4ab1",
+    "prerelease": false,
     "artifact_sha256": {
-      "v0.1.2_linux_amd64.tar.gz": "1542bc561227ecd6bfb2d35f3bc81b8fd34e6f6db1404923b5bf5bd4b8303cd2",
-      "v0.1.2_linux_arm64.tar.gz": "3d4a9ffc754c39400c31af6599d030c2652914094a772f38e7a8284aafc7f58f"
+      "v0.2.0_linux_amd64.tar.gz": "1ccccd39d57467236a2f64ee4809fee4de3cc3f1bc02c47e3e22aa9c6b414c76",
+      "v0.2.0_linux_arm64.tar.gz": "e4ad1e1bef4aa4656d03a543076d4cc08f91114a1cf93454218063f05992fb52"
     }
   },
-  "upgrade_options": [
-    {
-      "proposal_id": "3",
-      "tag": "v0.1.3",
-      "commit": "a914f444004df7514ee909c4fa2e66a942059ca6",
-      "release_artifact": "v0.1.3_{os}_{arch}.tar.gz",
-      "release_checksum_url": "https://github.com/worrellchain/worrell/releases/download/v0.1.3/release_checksum",
-      "artifact_sha256": {
-        "v0.1.3_linux_amd64.tar.gz": "b6e8687d1af51f8dea81c1ba6ecd93b358ce6bb80468159c1c7f70d4b908a6ec",
-        "v0.1.3_linux_arm64.tar.gz": "11c2e324b03693380515e97b8090a86f132bc4ea467d80d0e8d05709d15ee5d0"
-      },
-      "governance_plan_name": "v0.1.3",
-      "governance_upgrade_height": "1186000",
-      "estimated_upgrade_time_utc": "2026-10-13T10:00:00Z",
-      "verification_status": "official_release_verified"
-    }
-  ],
+  "upgrade_options": [],
   "chain": {
     "chain_spec": "worrelltestnet",
-    "chain_id": "worrell-testnet-1",
+    "chain_id": "worrell-testnet-2",
     "evm_chain_id": null,
-    "consensus_default_rpc_port": 17657,
-    "consensus_default_p2p_port": 17656,
-    "consensus_default_abci_port": 17658
+    "consensus_default_rpc_port": 18657,
+    "consensus_default_p2p_port": 18656,
+    "consensus_default_abci_port": 18658
   },
   "components": {
     "validator": {
@@ -47,10 +31,10 @@
       "version_model": "direct_component_versions",
       "consensus": {
         "binary": "worrelld",
-        "version_current": "v0.1.2",
+        "version_current": "v0.2.0",
         "release_repo": "https://github.com/worrellchain/worrell",
-        "release_artifact": "v0.1.2_{os}_{arch}.tar.gz",
-        "release_checksum_url": "https://github.com/worrellchain/worrell/releases/download/v0.1.2/release_checksum",
+        "release_artifact": "v0.2.0_{os}_{arch}.tar.gz",
+        "release_checksum_url": "https://github.com/worrellchain/worrell/releases/download/v0.2.0/release_checksum",
         "install_source": "resources/worrelld_node_install_testnet.sh",
         "update_source": "resources/worrelld_update.sh",
         "needs_live_verification": true,
@@ -59,9 +43,9 @@
           "release_repo": "https://github.com/cosmos/cosmos-sdk",
           "release_tag": "cosmovisor/v1.7.3",
           "daemon_name": "worrelld",
-          "daemon_home": "$HOME/.worrell (or /var/lib/worrell in root-only mode)",
+          "daemon_home": "$HOME/.worrell-testnet-2 (or /var/lib/worrell-testnet-2 in root-only mode)",
           "automatic_downloads": false,
-          "backup_dir": "$HOME/.worrell/cosmovisor/backup (or /var/lib/worrell/cosmovisor/backup in root-only mode)",
+          "backup_dir": "$HOME/.worrell-testnet-2/cosmovisor/backup (or /var/lib/worrell-testnet-2/cosmovisor/backup in root-only mode)",
           "archive_sha256": {
             "cosmovisor-v1.7.3-linux-amd64.tar.gz": "3df6ef38cf976b00d226f391dc6866b8dc4040fc2f1b4a780d248f6e1cc9332e",
             "cosmovisor-v1.7.3-linux-arm64.tar.gz": "ff27992e1356fbcb858a604455ad28a9727415c3e35b947a4fdb30d8f91295cd"
@@ -69,46 +53,39 @@
         }
       },
       "services": {
-        "consensus": "worrelld"
+        "consensus": "worrelld-testnet-2.service"
       },
-      "home_dir": "$HOME/.worrell (or /var/lib/worrell in root-only mode)",
+      "home_dir": "$HOME/.worrell-testnet-2 (or /var/lib/worrell-testnet-2 in root-only mode)",
       "binary_install_dir": "$HOME/go/bin (or /usr/local/bin in root-only mode)"
     }
   },
   "network": {
-    "genesis_url": "https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-1/genesis.json",
-    "genesis_sha256": "a81c507b12ba0678c3172394ff4bb03e1c3db60050cc5568c127a24ec19378fd",
-    "persistent_peers": [
-      "bb9164c1bd9ed9ff2c0fd9e09b23285698e231de@164.68.98.186:26656",
-      "40128ea31b1cfb5d4b24fc9e32ee0c468586c983@worrell-testnet-peer.itrocket.net:12656"
-    ],
-    "public_rpc_candidates": [
-      "https://worrel-testnet-rpc.oshvank.xyz",
-      "https://worrell-testnet-rpc.itrocket.net",
-      "https://worrell-testnet-rpc.nodesync.top",
-      "https://worrell-testnet-rpc.bonynode.online",
-      "https://rpc-worrell.test.onenov.xyz",
-      "https://worrellchain-rpctest.codeblocklabs.com",
-      "https://t-worrell.rpc.utsa.tech"
-    ],
+    "genesis_url": "https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-2/pre-genesis.json",
+    "genesis_kind": "pre-genesis",
+    "genesis_sha256": "f5231dc924c762bdbe5aa0605ed6472288c9b71f4b175015e0559edccdd96b94",
+    "final_genesis_url": "https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-2/genesis.json",
+    "final_genesis_sha256": null,
+    "persistent_peers": [],
+    "persistent_peers_status": "UNKNOWN until final genesis publication",
+    "public_rpc_candidates": [],
     "snapshot": null,
-    "faucet": "http://164.68.98.186:4500",
-    "public_rpc": "https://lightnode-rpc-worrell.grandvalleys.com",
-    "public_websocket": "wss://lightnode-rpc-worrell.grandvalleys.com/websocket",
-    "public_peer": "e812f08760b18ed774369e899763735f80179f76@peer-worrell.grandvalleys.com:17656",
-    "port_prefix": 17,
+    "faucet": null,
+    "public_rpc": null,
+    "public_websocket": null,
+    "public_peer": null,
+    "port_prefix": 18,
     "ports": {
-      "p2p": 17656,
-      "rpc": 17657,
-      "abci": 17658,
-      "prometheus": 17660,
-      "api": 17317,
-      "grpc": 17090,
-      "grpc-web": 17091
+      "p2p": 18656,
+      "rpc": 18657,
+      "abci": 18658,
+      "prometheus": 18660,
+      "api": 18317,
+      "grpc": 18090,
+      "grpc-web": 18091
     },
-    "moniker": "grandvalley-lightnode",
+    "moniker": null,
     "cosmovisor": true,
-    "unsafe_skip_backup": true,
+    "unsafe_skip_backup": false,
     "unsafe_skip_backup_default": false
   }
 }
