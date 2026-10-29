@@ -20,6 +20,33 @@ info() { printf '%b\n' "${CYAN}$*${RESET}"; }
 warn() { printf '%b\n' "${YELLOW}$*${RESET}" >&2; }
 die() { printf '%b\n' "${RED}ERROR: $*${RESET}" >&2; exit 1; }
 
+validate_t2_identity() {
+    local expected_home expected_user expected_bin
+    if [ "$ROOT_MODE" = yes ]; then
+        expected_home=/var/lib/worrell-testnet-2
+        expected_user=worrell-testnet-2
+        expected_bin=/usr/local/bin
+    else
+        expected_home="$HOME/.worrell-testnet-2"
+        expected_user="$(id -un)"
+        expected_bin="$HOME/go/bin"
+    fi
+    [ "$CHAIN_ID" = worrell-testnet-2 ] || die 'Genesis ceremony chain identity is not Testnet 2.'
+    [ "$HOME_DIR" = "$expected_home" ] || die "Genesis ceremony home is not the exact managed T2 home: $HOME_DIR"
+    [ "$SERVICE_USER" = "$expected_user" ] || die "Genesis ceremony service user is not the expected T2 user: $SERVICE_USER"
+    case "$WORRELL_SERVICE_NAME" in
+        worrelld-testnet-2|worrelld-testnet-2.service) ;;
+        *) die "Genesis ceremony service is not worrelld-testnet-2.service: $WORRELL_SERVICE_NAME" ;;
+    esac
+    if [[ "$WORRELLD_BIN" == */* ]]; then
+        [ "$WORRELLD_BIN" = "$expected_bin/worrelld" ] || die "Genesis ceremony binary is outside the managed T2 binary path: $WORRELLD_BIN"
+    else
+        [ "$WORRELLD_BIN" = worrelld ] || die "Genesis ceremony binary override is not worrelld: $WORRELLD_BIN"
+    fi
+    [ "$DEFAULT_PORT_PREFIX" = 18 ] || die "Genesis ceremony port prefix must remain 18: $DEFAULT_PORT_PREFIX"
+    [ "$PRE_GENESIS_URL" = https://raw.githubusercontent.com/worrellchain/networks/main/worrell-testnet-2/pre-genesis.json ] || die 'Genesis ceremony pre-genesis URL is not the official Testnet 2 URL.'
+}
+
 require_tools() {
     local tool
     for tool in curl sha256sum jq python3; do
@@ -48,6 +75,7 @@ valid_home() {
 
 local_genesis="$HOME_DIR/config/genesis.json"
 config_file="$HOME_DIR/config/config.toml"
+validate_t2_identity
 
 backup_genesis() {
     local path="$1" backup

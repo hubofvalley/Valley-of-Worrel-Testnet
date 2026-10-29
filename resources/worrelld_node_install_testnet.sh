@@ -82,6 +82,30 @@ prompt_default() {
 valid_prefix() { [[ "$1" =~ ^[0-9]{2}$ ]] && ((10#$1 >= 10 && 10#$1 <= 64)); }
 valid_service() { [[ "$1" =~ ^[A-Za-z0-9_.@-]+$ ]]; }
 
+validate_t2_environment() {
+    local expected_home expected_env expected_bin expected_user
+    if [ "$ROOT_MODE" = yes ]; then
+        expected_home=/var/lib/worrell-testnet-2
+        expected_env=/etc/worrelld-testnet-2/worrelld.env
+        expected_bin=/usr/local/bin
+        expected_user=worrell-testnet-2
+    else
+        expected_home="$HOME/.worrell-testnet-2"
+        expected_env="$expected_home/.worrell-testnet-2.env"
+        expected_bin="$HOME/go/bin"
+        expected_user="$(id -un)"
+    fi
+    [ "$CHAIN_ID" = worrell-testnet-2 ] || { echo -e "${RED}Refusing a non-Testnet-2 chain identity.${RESET}" >&2; return 1; }
+    [ "$WORRELL_VERSION" = v0.2.0 ] || { echo -e "${RED}Refusing a non-v0.2.0 runtime target.${RESET}" >&2; return 1; }
+    [ "$WORRELL_SERVICE_NAME" = worrelld-testnet-2 ] || { echo -e "${RED}Refusing service name $WORRELL_SERVICE_NAME; expected worrelld-testnet-2.${RESET}" >&2; return 1; }
+    [ "$SERVICE_USER" = "$expected_user" ] || { echo -e "${RED}Refusing service user $SERVICE_USER; expected $expected_user.${RESET}" >&2; return 1; }
+    [ "$SERVICE_GROUP" = "$expected_user" ] || { echo -e "${RED}Refusing service group $SERVICE_GROUP; expected $expected_user.${RESET}" >&2; return 1; }
+    [ "$HOME_DIR" = "$expected_home" ] || { echo -e "${RED}Refusing node home $HOME_DIR; expected $expected_home.${RESET}" >&2; return 1; }
+    [ "$BINARY_DIR" = "$expected_bin" ] || { echo -e "${RED}Refusing binary directory $BINARY_DIR; expected $expected_bin.${RESET}" >&2; return 1; }
+    [ "$WORRELL_ENV_FILE" = "$expected_env" ] || { echo -e "${RED}Refusing environment file $WORRELL_ENV_FILE; expected $expected_env.${RESET}" >&2; return 1; }
+    [ "$PORT_PREFIX" = 18 ] || { echo -e "${RED}Refusing port prefix $PORT_PREFIX; Testnet 2 requires prefix 18.${RESET}" >&2; return 1; }
+}
+
 write_runtime_env() {
     local env_file="$WORRELL_ENV_FILE"
     if [ "$ROOT_MODE" = yes ]; then
@@ -344,6 +368,7 @@ SSH_PORT=$(prompt_default 'SSH TCP port to preserve in UFW' '22')
 [[ "$SSH_PORT" =~ ^[0-9]+$ ]] && ((SSH_PORT >= 1 && SSH_PORT <= 65535)) || { echo -e "${RED}Invalid SSH port.${RESET}"; exit 1; }
 read -r -p "Use prebuilt ${WORRELL_VERSION} binary? (yes/no) [yes]: " USE_PREBUILT
 USE_PREBUILT=${USE_PREBUILT:-yes}
+validate_t2_environment || exit 1
 
 if [ "$ROOT_MODE" = yes ]; then
     case "$HOME_DIR" in
@@ -359,16 +384,36 @@ fi
 prepare_service_account
 
 fence_existing_service() {
-    local state
-    if sudo systemctl cat "$WORRELL_SERVICE_NAME" >/dev/null 2>&1; then
-        sudo systemctl stop "$WORRELL_SERVICE_NAME"
-        sudo systemctl disable "$WORRELL_SERVICE_NAME"
-        state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
-        case "$state" in
-            inactive|dead|failed|unknown) ;;
-            *) echo -e "${RED}Service $WORRELL_SERVICE_NAME is still active after stop; refusing to replace the node home.${RESET}" >&2; return 1 ;;
-        esac
-    fi
+    local active_state enabled_state
+    active_state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+    case "$active_state" in
+        active|activating|deactivating|reloading)
+            sudo systemctl stop "$WORRELL_SERVICE_NAME"
+            ;;
+        inactive|dead|failed|unknown)
+            ;;
+        *)
+            echo -e "${RED}Service state for $WORRELL_SERVICE_NAME is ambiguous; refusing to replace the node home.${RESET}" >&2
+            return 1
+            ;;
+    esac
+    active_state=$(sudo systemctl is-active "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+    case "$active_state" in
+        inactive|dead|failed|unknown) ;;
+        *) echo -e "${RED}Service $WORRELL_SERVICE_NAME is still active after stop; refusing to replace the node home.${RESET}" >&2; return 1 ;;
+    esac
+    enabled_state=$(sudo systemctl is-enabled "$WORRELL_SERVICE_NAME" 2>/dev/null || true)
+    case "$enabled_state" in
+        enabled|indirect|generated|linked|linked-runtime|alias)
+            sudo systemctl disable "$WORRELL_SERVICE_NAME"
+            ;;
+        disabled|static|masked|transient|not-found)
+            ;;
+        *)
+            echo -e "${RED}Enablement state for $WORRELL_SERVICE_NAME is ambiguous; refusing to replace the node home.${RESET}" >&2
+            return 1
+            ;;
+    esac
 }
 
 sudo apt-get update
